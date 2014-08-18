@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+item="$@"
+
+echo "- $item" >> .todo
