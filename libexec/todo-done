@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+tail -n +2 .todo > .todo.new
+mv .todo.new .todo
