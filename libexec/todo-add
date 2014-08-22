@@ -2,4 +2,6 @@
 
 item="$@"
 
-echo "- $item" >> .todo
+todofile="$(todo-file)"
+
+echo "- $item" >> "$todofile"

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 
-tail -n +2 .todo > .todo.new
-mv .todo.new .todo
+todofile="$(todo-file)"
+
+tail -n +2 "$todofile" > .todo.tmp
+mv .todo.tmp "$todofile"
