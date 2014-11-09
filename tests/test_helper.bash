@@ -1,6 +1,4 @@
-eval "$(basher init-bundle -)"
-
-source "$(basher runtime-path basherpm/bats-assertions)"
+source "$(basher package-path basherpm/bats-assertions)/lib/assertions.bash"
 
 export TODO_TEST_DIR="${BATS_TMPDIR}/todo"
 export TODO_CWD="${TODO_TEST_DIR}/cwd"
