@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Summary: Add item to todo list
+#
+# Usage: todo add ITEM
 
 item="$@"
 

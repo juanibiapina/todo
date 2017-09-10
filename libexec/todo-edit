@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Summary: Edit todo list file with $EDITOR
+#
+# Usage: todo edit
 
 todofile="$(todo-file)"
 

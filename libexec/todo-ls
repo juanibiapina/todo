@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Summary: Lists items in current todo list
+#
+# Usage: todo ls
 
 todofile="$(todo-file)"
 if [ -f "$todofile" ]; then

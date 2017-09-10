@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Summary: Complete the first item on the todo list
+#
+# Usage: todo done
 
 todofile="$(todo-file)"
 

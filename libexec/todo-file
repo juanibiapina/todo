@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Summary: Prints the name of current todo file
+#
+# Usage: todo file
 
 if [ -f TODO ]; then
   echo TODO

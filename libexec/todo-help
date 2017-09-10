@@ -145,7 +145,7 @@ if [ -z "$1" ] || [ "$1" == "todo" ]; then
   [ -z "$usage" ] || exit
   echo
   echo "Some useful todo commands are:"
-  print_summaries add help ls done
+  print_summaries add help ls done edit file
   echo
   echo "See 'todo help <command>' for information on a specific command."
 else

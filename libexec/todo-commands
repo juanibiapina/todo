@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Summary: List todo commands
+#
+# Usage: todo commands
 
 set -e
 
