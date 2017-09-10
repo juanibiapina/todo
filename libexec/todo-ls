@@ -2,9 +2,22 @@
 #
 # Summary: Lists items in current todo list
 #
-# Usage: todo ls
+# Usage: todo ls [filter]
+#
+# Lists items in current todo list.
+#
+# A filter can be passed to narrow down the results.
+
+filter="$1"
 
 todofile="$(todo-file)"
+
 if [ -f "$todofile" ]; then
-  nl -b a -w 3 -s " - " "$todofile"
+  lines="$(nl -b a -w 3 -s " - " "$todofile")"
+
+  if [ -n "$filter" ]; then
+    echo "$lines" | grep "$filter"
+  else
+    echo "$lines"
+  fi
 fi
