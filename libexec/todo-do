@@ -2,7 +2,7 @@
 #
 # Summary: Complete the first item on the todo list
 #
-# Usage: todo done
+# Usage: todo do
 
 todofile="$(todo-file)"
 
