@@ -14,3 +14,12 @@ load test_helper
   assert_success
   assert_output ".todo"
 }
+
+@test "uses global todo file if local .todo doesn't exist" {
+  export TODO_FILE=/global-todo.txt
+
+  run todo-file
+
+  assert_success
+  assert_output "/global-todo.txt"
+}

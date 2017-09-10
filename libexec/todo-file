@@ -4,4 +4,14 @@
 #
 # Usage: todo file
 
+if [ -f .todo ]; then
+  echo .todo
+  exit
+fi
+
+if [ -n "${TODO_FILE}" ]; then
+  echo "${TODO_FILE}"
+  exit
+fi
+
 echo .todo
