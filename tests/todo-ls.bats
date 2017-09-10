@@ -17,6 +17,6 @@ item 2"
 
   run todo-ls
   assert_success
-  assert_output "item 1
-item 2"
+  assert_output "  1 - item 1
+  2 - item 2"
 }

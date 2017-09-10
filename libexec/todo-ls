@@ -6,5 +6,5 @@
 
 todofile="$(todo-file)"
 if [ -f "$todofile" ]; then
-  cat "$todofile"
+  nl -b a -w 3 -s " - " "$todofile"
 fi

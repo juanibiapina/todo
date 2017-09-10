@@ -9,7 +9,7 @@ load test_helper
 
   run todo-ls
   assert_success
-  assert_output "new-item"
+  assert_output "  1 - new-item"
 }
 
 @test "with content, appends to the content" {
@@ -21,7 +21,7 @@ item 2"
 
   run todo-ls
   assert_success
-  assert_output "item 1
-item 2
-new-item"
+  assert_output "  1 - item 1
+  2 - item 2
+  3 - new-item"
 }
