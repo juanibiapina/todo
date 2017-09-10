@@ -1,4 +1,4 @@
-source "$(basher package-path basherpm/bats-assertions)/lib/assertions.bash"
+source "$(basher package-path ztombol/bats-assert)/load.bash"
 
 export TODO_TEST_DIR="${BATS_TMPDIR}/todo"
 export TODO_CWD="${TODO_TEST_DIR}/cwd"
