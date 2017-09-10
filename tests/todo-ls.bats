@@ -6,7 +6,8 @@ load test_helper
   create_command todo-file "echo NOFILE"
 
   run todo-ls
-  assert_success ""
+  assert_success
+  assert_output ""
 }
 
 @test "displays the contents of a todo file" {
@@ -15,6 +16,7 @@ load test_helper
 item 2"
 
   run todo-ls
-  assert_success "item 1
+  assert_success
+  assert_output "item 1
 item 2"
 }
