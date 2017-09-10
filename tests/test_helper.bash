@@ -1,3 +1,4 @@
+source "$(basher package-path ztombol/bats-support)/load.bash"
 source "$(basher package-path ztombol/bats-assert)/load.bash"
 
 export TODO_TEST_DIR="${BATS_TMPDIR}/todo"
