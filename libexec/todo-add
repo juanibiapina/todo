@@ -8,4 +8,4 @@ item="$@"
 
 todofile="$(todo-file)"
 
-echo "- $item" >> "$todofile"
+echo "$item" >> "$todofile"
