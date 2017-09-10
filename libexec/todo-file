@@ -9,8 +9,8 @@ if [ -f .todo ]; then
   exit
 fi
 
-if [ -n "${TODO_FILE}" ]; then
-  echo "${TODO_FILE}"
+if [ -n "${TODO_DIR}" ]; then
+  echo "${TODO_DIR}/todo.txt"
   exit
 fi
 

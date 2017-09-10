@@ -4,7 +4,7 @@ source "$(basher package-path ztombol/bats-assert)/load.bash"
 export TODO_TEST_DIR="${BATS_TMPDIR}/todo"
 export TODO_CWD="${TODO_TEST_DIR}/cwd"
 
-export TODO_FILE=""
+export TODO_DIR=""
 
 export PATH="${BATS_TEST_DIRNAME}/../libexec:$PATH"
 

@@ -16,10 +16,10 @@ load test_helper
 }
 
 @test "uses global todo file if local .todo doesn't exist" {
-  export TODO_FILE=/global-todo.txt
+  export TODO_DIR=/global-path
 
   run todo-file
 
   assert_success
-  assert_output "/global-todo.txt"
+  assert_output "/global-path/todo.txt"
 }
