@@ -13,11 +13,38 @@ filter="$1"
 todofile="$(todo-file)"
 
 if [ -f "$todofile" ]; then
-  lines="$(nl -b a -w 3 -s " - " "$todofile")"
+  declare -A colors
+  declare -i i
+  let i=1
+  let inc=1
 
-  if [ -n "$filter" ]; then
-    echo "$lines" | grep "$filter"
-  else
-    echo "$lines"
-  fi
+  for tag in $(todo-tags); do
+    colors+=(["$tag"]="$i")
+    let i+=$inc
+
+    if [ "$i" -eq "7" ]; then
+      let i=21
+      let inc=44
+    fi
+  done
+
+  lines="$(nl -b a -s " - " "$todofile" | grep "$filter")"
+
+  while read line; do
+    for word in $line; do
+      echo -n " "
+
+      if [[ "$word" == @* ]]; then
+        tput setaf "${colors[${word#@}]}"
+      fi
+
+      echo -n "$word"
+
+      if [[ "$word" == @* ]]; then
+        tput sgr0
+      fi
+    done
+
+    echo
+  done <<< "$lines"
 fi

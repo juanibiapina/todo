@@ -17,8 +17,8 @@ item 2"
 
   run todo-ls
   assert_success
-  assert_output "  1 - item 1
-  2 - item 2"
+  assert_output " 1 - item 1
+ 2 - item 2"
 }
 
 @test "with a filter, applies the filter" {
@@ -30,6 +30,6 @@ carrot 4"
 
   run todo-ls banana
   assert_success
-  assert_output "  1 - banana 1
-  3 - banana 2"
+  assert_output " 1 - banana 1
+ 3 - banana 2"
 }
