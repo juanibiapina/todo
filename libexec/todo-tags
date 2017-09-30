@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#
+# Summary: Lists all tags
+#
+# Usage: todo tags
+#
+# Lists all tags
+
+todofile="$(todo-file)"
+
+tr ' ' '\n' < "$todofile" | grep "^@" | sort | uniq | tr -d '@'
