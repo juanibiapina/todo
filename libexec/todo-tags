@@ -8,4 +8,4 @@
 
 todofile="$(todo-file)"
 
-tr ' ' '\n' < "$todofile" | grep "^@" | sort | uniq | tr -d '@'
+tr ' ' '\n' < "$todofile" | grep "^#" | sort | uniq | tr -d '#'

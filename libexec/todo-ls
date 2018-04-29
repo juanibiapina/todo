@@ -34,13 +34,13 @@ if [ -f "$todofile" ]; then
     for word in $line; do
       echo -n " "
 
-      if [[ "$word" == @* ]]; then
-        tput setaf "${colors[${word#@}]}"
+      if [[ "$word" == '#'* ]]; then
+        tput setaf "${colors[${word#'#'}]}"
       fi
 
       echo -n "$word"
 
-      if [[ "$word" == @* ]]; then
+      if [[ "$word" == '#'* ]]; then
         tput sgr0
       fi
     done
