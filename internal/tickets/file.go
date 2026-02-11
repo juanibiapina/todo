@@ -1,0 +1,293 @@
+package tickets
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+const defaultFileName = ".tickets.md"
+
+// FilePath returns the path to the tickets file in the given directory.
+func FilePath(dir string) string {
+	return dir + "/" + defaultFileName
+}
+
+// parse reads a tickets file and returns the header line and all tickets.
+func parse(path string) (string, []*Ticket, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil, nil
+		}
+		return "", nil, err
+	}
+
+	var tickets []*Ticket
+	var current *Ticket
+	var header string
+	inFrontMatter := false
+	fmCount := 0
+	pastFM := false
+	var descLines []string
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "## ") {
+			// Finish previous ticket
+			if current != nil {
+				if pastFM && len(descLines) > 0 {
+					current.Description = strings.TrimRight(strings.Join(descLines, "\n"), "\n")
+				}
+				tickets = append(tickets, current)
+			}
+
+			current = &Ticket{
+				Title: strings.TrimPrefix(line, "## "),
+				State: StateNew,
+			}
+			inFrontMatter = false
+			fmCount = 0
+			pastFM = false
+			descLines = nil
+			continue
+		}
+
+		if strings.HasPrefix(line, "# ") && current == nil {
+			header = line
+			continue
+		}
+
+		if current == nil {
+			continue
+		}
+
+		if !pastFM && line == "---" {
+			fmCount++
+			if fmCount == 1 {
+				inFrontMatter = true
+			} else if fmCount == 2 {
+				inFrontMatter = false
+				pastFM = true
+			}
+			continue
+		}
+
+		if inFrontMatter {
+			if strings.HasPrefix(line, "id: ") {
+				current.ID = strings.TrimPrefix(line, "id: ")
+			} else if strings.HasPrefix(line, "state: ") {
+				current.State = State(strings.TrimPrefix(line, "state: "))
+			}
+			continue
+		}
+
+		if pastFM {
+			descLines = append(descLines, line)
+		}
+	}
+
+	// Finish last ticket
+	if current != nil {
+		if pastFM && len(descLines) > 0 {
+			current.Description = strings.TrimRight(strings.Join(descLines, "\n"), "\n")
+		}
+		tickets = append(tickets, current)
+	}
+
+	return header, tickets, scanner.Err()
+}
+
+// write serializes the header and tickets back to the file.
+func write(path string, header string, tickets []*Ticket) error {
+	var b strings.Builder
+
+	if header != "" {
+		b.WriteString(header)
+		b.WriteString("\n")
+	}
+
+	for _, t := range tickets {
+		b.WriteString("\n")
+		b.WriteString(t.FullString())
+	}
+
+	return os.WriteFile(path, []byte(b.String()), 0644)
+}
+
+// ensureFile creates the tickets file with a header if it doesn't exist.
+func ensureFile(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	return os.WriteFile(path, []byte("# Tickets\n"), 0644)
+}
+
+// existingIDs collects all IDs from a ticket list.
+func existingIDs(tickets []*Ticket) map[string]bool {
+	ids := make(map[string]bool)
+	for _, t := range tickets {
+		if t.ID != "" {
+			ids[t.ID] = true
+		}
+	}
+	return ids
+}
+
+// findTicket resolves a reference (3-char ID or title) to a ticket.
+func findTicket(tickets []*Ticket, ref string) *Ticket {
+	// Try ID first if 3 chars
+	if len(ref) == 3 {
+		for _, t := range tickets {
+			if t.ID == ref {
+				return t
+			}
+		}
+	}
+	// Fall back to title match
+	for _, t := range tickets {
+		if t.Title == ref {
+			return t
+		}
+	}
+	return nil
+}
+
+// List returns all tickets from the file in the given directory.
+func List(dir string) ([]*Ticket, error) {
+	path := FilePath(dir)
+	_, tickets, err := parse(path)
+	return tickets, err
+}
+
+// Add creates a new ticket and returns it.
+func Add(dir string, title string, description string) (*Ticket, error) {
+	path := FilePath(dir)
+	if err := ensureFile(path); err != nil {
+		return nil, err
+	}
+
+	header, tickets, err := parse(path)
+	if err != nil {
+		return nil, err
+	}
+
+	state := StateNew
+	if description != "" {
+		state = StateRefined
+	}
+
+	t := &Ticket{
+		Title:       title,
+		ID:          generateUniqueID(existingIDs(tickets)),
+		State:       state,
+		Description: description,
+	}
+
+	tickets = append(tickets, t)
+
+	if err := write(path, header, tickets); err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
+// Show returns a ticket by reference (ID or title).
+func Show(dir string, ref string) (*Ticket, error) {
+	path := FilePath(dir)
+	_, tickets, err := parse(path)
+	if err != nil {
+		return nil, err
+	}
+
+	t := findTicket(tickets, ref)
+	if t == nil {
+		return nil, fmt.Errorf("ticket not found: %s", ref)
+	}
+
+	return t, nil
+}
+
+// Done removes a ticket by reference.
+func Done(dir string, ref string) (string, error) {
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", err
+	}
+
+	var remaining []*Ticket
+	var title string
+	for _, t := range tickets {
+		if (len(ref) == 3 && t.ID == ref) || t.Title == ref {
+			title = t.Title
+			continue
+		}
+		remaining = append(remaining, t)
+	}
+
+	if title == "" {
+		return "", fmt.Errorf("ticket not found: %s", ref)
+	}
+
+	if err := write(path, header, remaining); err != nil {
+		return "", err
+	}
+
+	return title, nil
+}
+
+// SetState changes a ticket's state.
+func SetState(dir string, ref string, state State) (string, error) {
+	if !state.IsValid() {
+		return "", fmt.Errorf("invalid state: %s (valid: new, refined, planned)", state)
+	}
+
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", err
+	}
+
+	t := findTicket(tickets, ref)
+	if t == nil {
+		return "", fmt.Errorf("ticket not found: %s", ref)
+	}
+
+	t.State = state
+
+	if err := write(path, header, tickets); err != nil {
+		return "", err
+	}
+
+	return t.Title, nil
+}
+
+// SetDescription sets or replaces a ticket's description.
+func SetDescription(dir string, ref string, description string) (string, error) {
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", err
+	}
+
+	t := findTicket(tickets, ref)
+	if t == nil {
+		return "", fmt.Errorf("ticket not found: %s", ref)
+	}
+
+	t.Description = description
+	if t.State == StateNew && description != "" {
+		t.State = StateRefined
+	}
+
+	if err := write(path, header, tickets); err != nil {
+		return "", err
+	}
+
+	return t.Title, nil
+}
