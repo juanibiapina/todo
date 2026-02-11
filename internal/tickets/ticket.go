@@ -45,3 +45,41 @@ func (t *Ticket) FullString() string {
 	}
 	return s
 }
+
+// NextState returns the next state in the workflow.
+func NextState(s State) State {
+	switch s {
+	case StateNew:
+		return StateRefined
+	case StateRefined:
+		return StatePlanned
+	default:
+		return s
+	}
+}
+
+// PrevState returns the previous state in the workflow.
+func PrevState(s State) State {
+	switch s {
+	case StatePlanned:
+		return StateRefined
+	case StateRefined:
+		return StateNew
+	default:
+		return s
+	}
+}
+
+// StateIcon returns a nerd font icon for a state.
+func StateIcon(s State) string {
+	switch s {
+	case StateNew:
+		return "\uf10c" // nf-fa-circle_o
+	case StateRefined:
+		return "\uf042" // nf-fa-adjust
+	case StatePlanned:
+		return "\uf111" // nf-fa-circle
+	default:
+		return "\uf10c"
+	}
+}

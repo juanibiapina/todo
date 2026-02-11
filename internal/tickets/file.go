@@ -267,6 +267,118 @@ func SetState(dir string, ref string, state State) (string, error) {
 	return t.Title, nil
 }
 
+// findTicketIndex resolves a reference to an index in the ticket slice.
+func findTicketIndex(tickets []*Ticket, ref string) int {
+	if len(ref) == 3 {
+		for i, t := range tickets {
+			if t.ID == ref {
+				return i
+			}
+		}
+	}
+	for i, t := range tickets {
+		if t.Title == ref {
+			return i
+		}
+	}
+	return -1
+}
+
+// MoveUp swaps a ticket with the one above it.
+func MoveUp(dir string, ref string) (string, error) {
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", err
+	}
+
+	idx := findTicketIndex(tickets, ref)
+	if idx < 0 {
+		return "", fmt.Errorf("ticket not found: %s", ref)
+	}
+	if idx == 0 {
+		return tickets[idx].Title, nil // already at top
+	}
+
+	tickets[idx], tickets[idx-1] = tickets[idx-1], tickets[idx]
+
+	if err := write(path, header, tickets); err != nil {
+		return "", err
+	}
+
+	return tickets[idx-1].Title, nil
+}
+
+// MoveDown swaps a ticket with the one below it.
+func MoveDown(dir string, ref string) (string, error) {
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", err
+	}
+
+	idx := findTicketIndex(tickets, ref)
+	if idx < 0 {
+		return "", fmt.Errorf("ticket not found: %s", ref)
+	}
+	if idx == len(tickets)-1 {
+		return tickets[idx].Title, nil // already at bottom
+	}
+
+	tickets[idx], tickets[idx+1] = tickets[idx+1], tickets[idx]
+
+	if err := write(path, header, tickets); err != nil {
+		return "", err
+	}
+
+	return tickets[idx+1].Title, nil
+}
+
+// CycleState advances a ticket's state forward.
+func CycleState(dir string, ref string) (string, State, error) {
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", "", err
+	}
+
+	t := findTicket(tickets, ref)
+	if t == nil {
+		return "", "", fmt.Errorf("ticket not found: %s", ref)
+	}
+
+	t.State = NextState(t.State)
+
+	if err := write(path, header, tickets); err != nil {
+		return "", "", err
+	}
+
+	return t.Title, t.State, nil
+}
+
+// CycleStateBack moves a ticket's state backward.
+func CycleStateBack(dir string, ref string) (string, State, error) {
+	path := FilePath(dir)
+	header, tickets, err := parse(path)
+	if err != nil {
+		return "", "", err
+	}
+
+	t := findTicket(tickets, ref)
+	if t == nil {
+		return "", "", fmt.Errorf("ticket not found: %s", ref)
+	}
+
+	t.State = PrevState(t.State)
+
+
+	if err := write(path, header, tickets); err != nil {
+		return "", "", err
+	}
+
+	return t.Title, t.State, nil
+}
+
 // SetDescription sets or replaces a ticket's description.
 func SetDescription(dir string, ref string, description string) (string, error) {
 	path := FilePath(dir)

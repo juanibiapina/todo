@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-11
+
+### Added
+
+- `todo tui` - Full-screen bubbletea TUI with split-panel layout (ticket list + detail view)
+  - Navigate, add, delete, cycle state, reorder tickets interactively
+  - Help modal with `?`
+  - Status bar with contextual keybindings
+- `todo move-up` / `todo move-down` - Reorder tickets via CLI
+- State cycling: `NextState`, `PrevState`, `CycleState`, `CycleStateBack`
+- State icons (nerd font): ○ new, ◐ refined, ● planned
+
 ## [0.1.0] - 2026-02-11
 
 ### Added
