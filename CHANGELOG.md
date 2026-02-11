@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Render markdown in TUI detail panel using glamour
+- Comprehensive bats integration tests
+- Space shortcut in TUI to copy ticket ID to clipboard
+
 ### Changed
 
 - All commands now reference tickets by ID only, not by title
@@ -25,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Navigate, add, delete, cycle state, reorder tickets interactively
   - Help modal with `?`
   - Status bar with contextual keybindings
+  - `esc` key to quit
+- `todo quick-add` - Interactive prompt for adding tickets (designed for tmux popup)
 - `todo move-up` / `todo move-down` - Reorder tickets via CLI
 - State cycling: `NextState`, `PrevState`, `CycleState`, `CycleStateBack`
 - State icons (nerd font): ○ new, ◐ refined, ● planned

@@ -122,27 +122,3 @@ When running `todo tui` inside a tmux popup, the space shortcut should paste the
    - Fall back to clipboard if not in tmux or flag not provided
 
 **Usage:** The user's shell alias/script would call `todo tui --tmux-pane "$TMUX_PANE"` before opening the popup, so the TUI knows where to paste back.
-
-## Render markdown in detail panel with glamour
----
-id: xoN
-state: refined
----
-The detail panel in the TUI currently displays raw markdown text. Use `charmbracelet/glamour` to render descriptions as styled markdown (headings, bold, code blocks, lists, etc.).
-
-**Changes:**
-
-1. `go.mod`: add `github.com/charmbracelet/glamour` dependency
-
-2. `internal/tui/tui.go` — `updateDetailContent()`:
-   - After building the metadata header (title, ID, state), render `t.Description` through glamour
-   - Use `glamour.RenderWithEnvironmentConfig(t.Description)` or create a renderer with `glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.detailView.Width))`
-   - Append the rendered output instead of raw `t.Description`
-   - Handle render errors gracefully (fall back to raw text)
-
-3. Consider caching the rendered output to avoid re-rendering on every tick (the description only changes when cursor moves or tickets reload).
-
-**Notes:**
-- Glamour is part of the Charm ecosystem (same as bubbletea/lipgloss), so it integrates naturally
-- The `WithAutoStyle()` option picks dark/light based on terminal background
-- `WithWordWrap(width)` respects the panel width constraint
