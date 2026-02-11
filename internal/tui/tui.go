@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -301,6 +302,11 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.items) > 0 {
 			return m, m.moveDown(m.items[m.scroll.Cursor].ID)
 		}
+
+	case " ":
+		if len(m.items) > 0 {
+			return m, m.copyTicket(m.items[m.scroll.Cursor])
+		}
 	}
 
 	return m, nil
@@ -378,6 +384,16 @@ func (m Model) moveUp(ref string) tea.Cmd {
 	return func() tea.Msg {
 		_, err := tickets.MoveUp(m.dir, ref)
 		return moveResultMsg{direction: "up", err: err}
+	}
+}
+
+func (m Model) copyTicket(t *tickets.Ticket) tea.Cmd {
+	return func() tea.Msg {
+		err := clipboard.WriteAll(t.FullString())
+		if err != nil {
+			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
+		}
+		return actionDoneMsg{message: fmt.Sprintf("Copied %s to clipboard", t.ID)}
 	}
 }
 
@@ -600,6 +616,7 @@ func (m Model) renderStatusBar() string {
 				m.renderKey("s/S", "state"),
 				m.renderKey("d", "done"),
 				m.renderKey("K/J", "reorder"),
+				m.renderKey("space", "copy"),
 				m.renderKey("tab", "detail"),
 			)
 		case panelDetail:
@@ -747,6 +764,7 @@ func (m Model) renderHelpModal() string {
 		"  " + m.renderKey("d", "mark done (remove)"),
 		"  " + m.renderKey("s/S", "cycle state forward/back"),
 		"  " + m.renderKey("K/J", "reorder up/down"),
+		"  " + m.renderKey("space", "copy ticket to clipboard"),
 		"",
 		helpKeyStyle.Render("Detail Panel"),
 		"  " + m.renderKey("↑/k ↓/j", "scroll"),
