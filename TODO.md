@@ -3,7 +3,6 @@
 ## Set up release pipeline with GoReleaser and GitHub Actions
 ---
 id: uY3
-state: refined
 ---
 Set up automated releases with GoReleaser and GitHub Actions, following the juanibiapina/gob pattern.
 
@@ -71,7 +70,6 @@ jobs:
 ## Space shortcut should paste ticket into calling terminal
 ---
 id: EUZ
-state: refined
 ---
 When running `todo tui` inside a tmux popup, the space shortcut should paste the ticket text directly into the calling tmux pane instead of copying to clipboard.
 
@@ -94,3 +92,8 @@ When running `todo tui` inside a tmux popup, the space shortcut should paste the
    - Fall back to clipboard if not in tmux or flag not provided
 
 **Usage:** The user's shell alias/script would call `todo tui --tmux-pane "$TMUX_PANE"` before opening the popup, so the TUI knows where to paste back.
+
+## create agents.md inspired by juanibiapina/gob
+---
+id: wlj
+---

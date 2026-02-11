@@ -32,10 +32,7 @@ This allows heredocs and pipes for rich content:
   ` + "```" + `
   EOF
 
-  echo "Simple description" | todo add 'Fix bug'
-
-A ticket without a description gets state "new".
-A ticket with a description gets state "refined".`,
+  echo "Simple description" | todo add 'Fix bug'`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		title := args[0]
@@ -65,7 +62,7 @@ A ticket with a description gets state "refined".`,
 			return err
 		}
 
-		fmt.Printf("Added %s %s %s\n", cliStateIcon(ticket.State), cliID(ticket.ID), ticket.Title)
+		fmt.Printf("Added %s %s\n", cliID(ticket.ID), ticket.Title)
 
 		return nil
 	},

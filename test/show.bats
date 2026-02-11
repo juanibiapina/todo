@@ -6,26 +6,24 @@ load test_helper
   local out
   out="$(todo add "Show me")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo show "${id}"
   assert_success
   assert_output --partial "Show me"
   assert_output --partial "id: ${id}"
-  assert_output --partial "state: new"
 }
 
 @test "show: displays description" {
   local out
   out="$(todo add "Described ticket" "This is the description")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo show "${id}"
   assert_success
   assert_output --partial "Described ticket"
   assert_output --partial "This is the description"
-  assert_output --partial "state: refined"
 }
 
 @test "show: nonexistent ID returns error" {
@@ -38,7 +36,7 @@ load test_helper
   local out
   out="$(todo add "Markdown ticket")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo show "${id}"
   assert_success

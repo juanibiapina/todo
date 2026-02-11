@@ -6,7 +6,7 @@ load test_helper
   local out
   out="$(todo add "Describe me")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo set-description "${id}" "New description"
   assert_success
@@ -20,7 +20,7 @@ load test_helper
   local out
   out="$(todo add "Has desc" "Old description")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   todo set-description "${id}" "Replaced description"
 
@@ -29,24 +29,11 @@ load test_helper
   refute_output --partial "Old description"
 }
 
-@test "set-description: setting description on new ticket moves to refined" {
-  local out
-  out="$(todo add "New ticket")"
-  local id
-  id="$(echo "${out}" | awk '{print $3}')"
-
-  [[ "$(ticket_state "${id}")" == "new" ]]
-
-  todo set-description "${id}" "Now it has a description"
-
-  [[ "$(ticket_state "${id}")" == "refined" ]]
-}
-
 @test "set-description: via stdin" {
   local out
   out="$(todo add "Stdin desc")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run bash -c "echo 'From stdin' | todo set-description ${id}"
   assert_success
@@ -59,7 +46,7 @@ load test_helper
   local out
   out="$(todo add "No desc")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo set-description "${id}"
   assert_failure

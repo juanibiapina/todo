@@ -8,7 +8,7 @@ load test_helper
   assert_output "No tickets"
 }
 
-@test "list: shows tickets with IDs and states" {
+@test "list: shows tickets with IDs" {
   todo add "First ticket"
   todo add "Second ticket"
 
@@ -36,21 +36,14 @@ load test_helper
   [[ "${beta_line}" -lt "${gamma_line}" ]]
 }
 
-@test "list: shows correct state for each ticket" {
-  todo add "New ticket"
-  todo add "Refined ticket" "Has a description"
+@test "list: shows tickets with and without descriptions" {
+  todo add "No description ticket"
+  todo add "Has description ticket" "Has a description"
 
   run todo list
   assert_success
 
   # Verify both tickets appear
-  assert_output --partial "New ticket"
-  assert_output --partial "Refined ticket"
-
-  # Verify actual states via show command
-  local new_id refined_id
-  new_id="$(echo "${output}" | grep "New ticket" | awk '{print $2}')"
-  refined_id="$(echo "${output}" | grep "Refined ticket" | awk '{print $2}')"
-  [[ "$(ticket_state "${new_id}")" == "new" ]]
-  [[ "$(ticket_state "${refined_id}")" == "refined" ]]
+  assert_output --partial "No description ticket"
+  assert_output --partial "Has description ticket"
 }

@@ -47,7 +47,6 @@ func parse(path string) (string, []*Ticket, error) {
 
 			current = &Ticket{
 				Title: strings.TrimPrefix(line, "## "),
-				State: StateNew,
 			}
 			inFrontMatter = false
 			fmCount = 0
@@ -79,9 +78,8 @@ func parse(path string) (string, []*Ticket, error) {
 		if inFrontMatter {
 			if strings.HasPrefix(line, "id: ") {
 				current.ID = strings.TrimPrefix(line, "id: ")
-			} else if strings.HasPrefix(line, "state: ") {
-				current.State = State(strings.TrimPrefix(line, "state: "))
 			}
+			// Ignore state: lines for backwards compatibility
 			continue
 		}
 
@@ -166,15 +164,9 @@ func Add(dir string, title string, description string) (*Ticket, error) {
 		return nil, err
 	}
 
-	state := StateNew
-	if description != "" {
-		state = StateRefined
-	}
-
 	t := &Ticket{
 		Title:       title,
 		ID:          generateUniqueID(existingIDs(tickets)),
-		State:       state,
 		Description: description,
 	}
 
@@ -230,32 +222,6 @@ func Done(dir string, ref string) (string, error) {
 	}
 
 	return title, nil
-}
-
-// SetState changes a ticket's state.
-func SetState(dir string, ref string, state State) (string, error) {
-	if !state.IsValid() {
-		return "", fmt.Errorf("invalid state: %s (valid: new, refined)", state)
-	}
-
-	path := FilePath(dir)
-	header, tickets, err := parse(path)
-	if err != nil {
-		return "", err
-	}
-
-	t := findTicket(tickets, ref)
-	if t == nil {
-		return "", fmt.Errorf("ticket not found: %s", ref)
-	}
-
-	t.State = state
-
-	if err := write(path, header, tickets); err != nil {
-		return "", err
-	}
-
-	return t.Title, nil
 }
 
 // findTicketIndex resolves a ticket ID to an index in the ticket slice.
@@ -318,51 +284,6 @@ func MoveDown(dir string, ref string) (string, error) {
 	return tickets[idx+1].Title, nil
 }
 
-// CycleState advances a ticket's state forward.
-func CycleState(dir string, ref string) (string, State, error) {
-	path := FilePath(dir)
-	header, tickets, err := parse(path)
-	if err != nil {
-		return "", "", err
-	}
-
-	t := findTicket(tickets, ref)
-	if t == nil {
-		return "", "", fmt.Errorf("ticket not found: %s", ref)
-	}
-
-	t.State = NextState(t.State)
-
-	if err := write(path, header, tickets); err != nil {
-		return "", "", err
-	}
-
-	return t.Title, t.State, nil
-}
-
-// CycleStateBack moves a ticket's state backward.
-func CycleStateBack(dir string, ref string) (string, State, error) {
-	path := FilePath(dir)
-	header, tickets, err := parse(path)
-	if err != nil {
-		return "", "", err
-	}
-
-	t := findTicket(tickets, ref)
-	if t == nil {
-		return "", "", fmt.Errorf("ticket not found: %s", ref)
-	}
-
-	t.State = PrevState(t.State)
-
-
-	if err := write(path, header, tickets); err != nil {
-		return "", "", err
-	}
-
-	return t.Title, t.State, nil
-}
-
 // SetDescription sets or replaces a ticket's description.
 func SetDescription(dir string, ref string, description string) (string, error) {
 	path := FilePath(dir)
@@ -377,9 +298,6 @@ func SetDescription(dir string, ref string, description string) (string, error) 
 	}
 
 	t.Description = description
-	if t.State == StateNew && description != "" {
-		t.State = StateRefined
-	}
 
 	if err := write(path, header, tickets); err != nil {
 		return "", err

@@ -11,7 +11,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all tickets",
-	Long: `List all tickets with their state icon, ID, and title.`,
+	Long: `List all tickets with their ID and title.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()

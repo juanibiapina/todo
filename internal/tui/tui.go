@@ -204,11 +204,8 @@ func (m *Model) updateDetailContent() {
 	b.WriteString("\n\n")
 
 	// Metadata
-	b.WriteString(mutedStyle.Render("ID:    "))
+	b.WriteString(mutedStyle.Render("ID: "))
 	b.WriteString(ticketIDStyle.Render(t.ID))
-	b.WriteString("\n")
-	b.WriteString(mutedStyle.Render("State: "))
-	b.WriteString(m.stateStyled(t.State, false))
 	b.WriteString("\n")
 
 	if t.Description != "" {
@@ -316,15 +313,6 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.deleteTicket(m.items[m.scroll.Cursor].ID)
 		}
 
-	case "s":
-		if len(m.items) > 0 {
-			return m, m.cycleState(m.items[m.scroll.Cursor].ID)
-		}
-	case "S":
-		if len(m.items) > 0 {
-			return m, m.cycleStateBack(m.items[m.scroll.Cursor].ID)
-		}
-
 	case "K":
 		if len(m.items) > 0 {
 			return m, m.moveUp(m.items[m.scroll.Cursor].ID)
@@ -383,26 +371,6 @@ func (m Model) deleteTicket(ref string) tea.Cmd {
 			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
 		}
 		return actionDoneMsg{message: fmt.Sprintf("Completed: %s", title)}
-	}
-}
-
-func (m Model) cycleState(ref string) tea.Cmd {
-	return func() tea.Msg {
-		title, state, err := tickets.CycleState(m.dir, ref)
-		if err != nil {
-			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
-		}
-		return actionDoneMsg{message: fmt.Sprintf("%s → %s", title, state)}
-	}
-}
-
-func (m Model) cycleStateBack(ref string) tea.Cmd {
-	return func() tea.Msg {
-		title, state, err := tickets.CycleStateBack(m.dir, ref)
-		if err != nil {
-			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
-		}
-		return actionDoneMsg{message: fmt.Sprintf("%s → %s", title, state)}
 	}
 }
 
@@ -502,9 +470,6 @@ func (m Model) renderTicketList(width int) string {
 		t := m.items[i]
 		isSelected := i == m.scroll.Cursor
 
-		// State icon
-		icon := m.stateStyled(t.State, isSelected)
-
 		// ID
 		var id string
 		if isSelected {
@@ -514,7 +479,7 @@ func (m Model) renderTicketList(width int) string {
 		}
 
 		// Title (truncated)
-		maxTitleLen := width - 10 // icon(2) + space + id(3) + space + margin
+		maxTitleLen := width - 7 // id(3) + spaces + margin
 		if maxTitleLen < 5 {
 			maxTitleLen = 5
 		}
@@ -533,41 +498,19 @@ func (m Model) renderTicketList(width int) string {
 		var line string
 		if isSelected {
 			sp := selectedBgStyle.Render(" ")
-			line = sp + icon + sp + id + sp + title
+			line = sp + id + sp + title
 			padding := width - lipgloss.Width(line)
 			if padding > 0 {
 				line = line + selectedBgStyle.Render(strings.Repeat(" ", padding))
 			}
 		} else {
-			line = fmt.Sprintf(" %s %s %s", icon, id, title)
+			line = fmt.Sprintf(" %s %s", id, title)
 		}
 
 		lines = append(lines, line)
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-func (m Model) stateStyled(state tickets.State, selected bool) string {
-	icon := tickets.StateIcon(state)
-	if selected {
-		switch state {
-		case tickets.StateNew:
-			return ticketNewSelStyle.Render(icon)
-		case tickets.StateRefined:
-			return ticketRefSelStyle.Render(icon)
-		default:
-			return ticketNewSelStyle.Render(icon)
-		}
-	}
-	switch state {
-	case tickets.StateNew:
-		return ticketNewStyle.Render(icon)
-	case tickets.StateRefined:
-		return ticketRefStyle.Render(icon)
-	default:
-		return ticketNewStyle.Render(icon)
-	}
 }
 
 func (m Model) renderPanel(num int, title, content string, width, height int, active bool) string {
@@ -640,7 +583,6 @@ func (m Model) renderStatusBar() string {
 			parts = append(parts,
 				m.renderKey("↑↓", "navigate"),
 				m.renderKey("a", "add"),
-				m.renderKey("s/S", "state"),
 				m.renderKey("d", "done"),
 				m.renderKey("K/J", "reorder"),
 				m.renderKey("space", "copy"),
@@ -789,7 +731,6 @@ func (m Model) renderHelpModal() string {
 		"  " + m.renderKey("g/G", "first/last"),
 		"  " + m.renderKey("a", "add ticket"),
 		"  " + m.renderKey("d", "mark done (remove)"),
-		"  " + m.renderKey("s/S", "cycle state forward/back"),
 		"  " + m.renderKey("K/J", "reorder up/down"),
 		"  " + m.renderKey("space", "copy ticket to clipboard"),
 		"",

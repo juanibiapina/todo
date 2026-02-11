@@ -13,7 +13,7 @@ var tuiCmd = &cobra.Command{
 	Long: `Launch a full-screen terminal interface for managing tickets.
 
 The TUI provides a split-panel layout:
-  - Left panel: Ticket list with state icons and IDs
+  - Left panel: Ticket list with IDs
   - Right panel: Selected ticket details and description
 
 KEYBINDINGS:
@@ -23,7 +23,6 @@ KEYBINDINGS:
     g/G       First/last ticket
     a         Add new ticket
     d         Mark done (remove)
-    s/S       Cycle state forward/backward
     K/J       Reorder up/down
 
   Detail Panel:

@@ -28,7 +28,6 @@ load test_helper
   assert_output --partial "list"
   assert_output --partial "show"
   assert_output --partial "done"
-  assert_output --partial "set-state"
   assert_output --partial "set-description"
   assert_output --partial "move-up"
   assert_output --partial "move-down"

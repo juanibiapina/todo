@@ -6,7 +6,7 @@ load test_helper
   local out
   out="$(todo add "To be done")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo done "${id}"
   assert_success
@@ -29,7 +29,7 @@ load test_helper
   out1="$(todo add "Keep me")"
   out2="$(todo add "Remove me")"
   local id2
-  id2="$(echo "${out2}" | awk '{print $3}')"
+  id2="$(echo "${out2}" | awk '{print $2}')"
 
   todo done "${id2}"
 
@@ -44,7 +44,7 @@ load test_helper
   local out
   out="$(todo add "Two")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
   todo add "Three"
 
   [[ "$(ticket_count)" -eq 3 ]]

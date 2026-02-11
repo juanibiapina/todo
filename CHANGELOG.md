@@ -15,14 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- CLI output now uses TUI-style state icons and colors
-  - `list`: `○ aBc Title` with colored icons (muted/cyan) and IDs (magenta)
-  - `add`: `Added ○ aBc Title`
-  - `set-state`: `State → ◐ refined: Title`
 - All commands now reference tickets by ID only, not by title
-  - Affects: `show`, `done`, `set-state`, `set-description`, `move-up`, `move-down`
+  - Affects: `show`, `done`, `set-description`, `move-up`, `move-down`
   - Title fallback removed from internal lookup functions
-- Removed `planned` state (only `new` and `refined` remain)
+
+### Removed
+
+- Removed ticket states entirely (no more `new`/`refined` distinction)
+  - Removed `set-state` command
+  - Removed state icons from list and TUI output
+  - Removed `s`/`S` keybindings from TUI
+  - Removed `state:` field from TODO.md format
+  - Simpler output: `list` now shows just `ID Title`
 
 ## [0.2.0] - 2026-02-11
 

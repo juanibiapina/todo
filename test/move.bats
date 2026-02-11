@@ -7,7 +7,7 @@ load test_helper
   local out
   out="$(todo add "Second")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo move-up "${id}"
   assert_success
@@ -24,7 +24,7 @@ load test_helper
   local out
   out="$(todo add "Already first")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
   todo add "Second"
 
   run todo move-up "${id}"
@@ -42,7 +42,7 @@ load test_helper
   local out
   out="$(todo add "First")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
   todo add "Second"
 
   run todo move-down "${id}"
@@ -61,7 +61,7 @@ load test_helper
   local out
   out="$(todo add "Already last")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(echo "${out}" | awk '{print $2}')"
 
   run todo move-down "${id}"
   assert_success
@@ -92,7 +92,7 @@ load test_helper
   out2="$(todo add "Beta")"
   out3="$(todo add "Gamma")"
   local id3
-  id3="$(echo "${out3}" | awk '{print $3}')"
+  id3="$(echo "${out3}" | awk '{print $2}')"
 
   # Move Gamma to the top: up twice
   todo move-up "${id3}"

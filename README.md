@@ -2,7 +2,7 @@
 
 Local ticket tracking in markdown.
 
-`todo` is a CLI for managing tickets stored as a `TODO.md` file in your project directory. Each ticket has a title, a 3-character ID, a state, and an optional description.
+`todo` is a CLI for managing tickets stored as a `TODO.md` file in your project directory. Each ticket has a title, a 3-character ID, and an optional description.
 
 Descriptions can be passed via stdin (heredocs, pipes) so multi-line content with backticks, code blocks, and special characters works without shell escaping issues.
 
@@ -24,10 +24,10 @@ make install  # go install
 ### Add a ticket
 
 ````bash
-# Simple ticket (state: new)
+# Simple ticket
 todo add 'Fix login timeout'
 
-# With inline description (state: refined)
+# With inline description
 todo add 'Fix login timeout' 'Users experience timeouts after 30s'
 
 # With rich description via stdin
@@ -46,25 +46,17 @@ EOF
 
 ```bash
 todo list
-# ○ aBc Fix login timeout
-# ◐ xYz Refactor auth module
+# aBc Fix login timeout
+# xYz Refactor auth module
 ```
 
-State icons and IDs are color-coded when output is a terminal (muted for new, cyan for refined, magenta for IDs).
+IDs are color-coded (magenta) when output is a terminal.
 
 ### Show a ticket
 
 ```bash
 todo show aBc
 ```
-
-### Set state
-
-```bash
-todo set-state aBc refined
-```
-
-Valid states: `new`, `refined`
 
 ### Set description
 
@@ -103,7 +95,7 @@ todo done aBc
 todo tui
 ```
 
-Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, delete, cycle state, and reorder tickets interactively.
+Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, delete, and reorder tickets interactively.
 
 ### Quick add (for tmux popups)
 
@@ -123,26 +115,17 @@ Tickets are stored in `TODO.md` in the current directory:
 ## Fix login timeout
 ---
 id: aBc
-state: new
 ---
 
 ## Refactor auth module
 ---
 id: xYz
-state: refined
 ---
 Move auth logic to middleware layer.
 Multiple lines of description are supported.
 ```
 
-Each `##` heading is a ticket title. A YAML front matter block (`---` delimited) follows with `id` and `state`. Everything after the closing `---` until the next `##` is the description.
-
-## States
-
-| State | Icon | Meaning |
-|-------|------|---------|
-| `new` | ○ | Just created, no description |
-| `refined` | ● | Has a description |
+Each `##` heading is a ticket title. A YAML front matter block (`---` delimited) follows with `id`. Everything after the closing `---` until the next `##` is the description.
 
 ## License
 

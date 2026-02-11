@@ -23,9 +23,6 @@ func TestAddAndList(t *testing.T) {
 	if ticket.Title != "Fix login bug" {
 		t.Errorf("title = %q, want %q", ticket.Title, "Fix login bug")
 	}
-	if ticket.State != StateNew {
-		t.Errorf("state = %q, want %q", ticket.State, StateNew)
-	}
 	if len(ticket.ID) != 3 {
 		t.Errorf("id length = %d, want 3", len(ticket.ID))
 	}
@@ -48,9 +45,6 @@ func TestAddWithDescription(t *testing.T) {
 	ticket, err := Add(dir, "Refactor auth", "Move auth to middleware layer.")
 	if err != nil {
 		t.Fatalf("Add: %v", err)
-	}
-	if ticket.State != StateRefined {
-		t.Errorf("state = %q, want %q", ticket.State, StateRefined)
 	}
 	if ticket.Description != "Move auth to middleware layer." {
 		t.Errorf("description = %q", ticket.Description)
@@ -129,39 +123,6 @@ func TestDone(t *testing.T) {
 	}
 }
 
-func TestSetState(t *testing.T) {
-	dir := tempDir(t)
-
-	ticket, err := Add(dir, "State test", "")
-	if err != nil {
-		t.Fatalf("Add: %v", err)
-	}
-
-	_, err = SetState(dir, ticket.ID, StateRefined)
-	if err != nil {
-		t.Fatalf("SetState: %v", err)
-	}
-
-	loaded, err := Show(dir, ticket.ID)
-	if err != nil {
-		t.Fatalf("Show: %v", err)
-	}
-	if loaded.State != StateRefined {
-		t.Errorf("state = %q, want %q", loaded.State, StateRefined)
-	}
-}
-
-func TestSetStateInvalid(t *testing.T) {
-	dir := tempDir(t)
-
-	Add(dir, "State test", "")
-
-	_, err := SetState(dir, "State test", State("invalid"))
-	if err == nil {
-		t.Fatal("expected error for invalid state")
-	}
-}
-
 func TestSetDescription(t *testing.T) {
 	dir := tempDir(t)
 
@@ -181,10 +142,6 @@ func TestSetDescription(t *testing.T) {
 	}
 	if loaded.Description != "New description here." {
 		t.Errorf("description = %q", loaded.Description)
-	}
-	// Should auto-promote to refined
-	if loaded.State != StateRefined {
-		t.Errorf("state = %q, want refined", loaded.State)
 	}
 }
 
@@ -259,11 +216,6 @@ func TestNotFoundErrors(t *testing.T) {
 		t.Error("Done: expected error")
 	}
 
-	_, err = SetState(dir, "nonexistent", StateNew)
-	if err == nil {
-		t.Error("SetState: expected error")
-	}
-
 	_, err = SetDescription(dir, "nonexistent", "desc")
 	if err == nil {
 		t.Error("SetDescription: expected error")
@@ -299,8 +251,8 @@ func TestFileFormat(t *testing.T) {
 	if !strings.Contains(content, "## My Ticket") {
 		t.Error("missing ticket heading")
 	}
-	if !strings.Contains(content, "state: refined") {
-		t.Error("missing state")
+	if !strings.Contains(content, "id:") {
+		t.Error("missing id")
 	}
 	if !strings.Contains(content, "Some description") {
 		t.Error("missing description")
