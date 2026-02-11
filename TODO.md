@@ -1,103 +1,148 @@
 # TODO
 
-## Space shortcut should paste ticket into calling terminal
+## Simplify ticket states to new, refined, and done
 ---
-id: EUZ
+id: UDK
 state: refined
 ---
-When running inside a tmux popup, the space shortcut should paste the ticket text directly into the calling tmux pane instead of just copying to clipboard. The old fzf+tmux workflow allowed this because it could send text to the parent pane. The TUI should detect if it's running in a tmux popup and use tmux send-keys to paste into the originating pane.
+Remove the `planned` state. Current states are `new`, `refined`, `planned`, and `done` (removed from file). In practice, `planned` adds no value — a ticket is either `new` (no description), `refined` (well-defined with description), or `done` (completed and removed).
 
-## Add extensive bats integration tests
----
-id: USP
-state: refined
----
-Add comprehensive integration tests using bats, following the pattern established in juanibiapina/gob:
+**Changes:**
 
-**Setup:**
-- Add bats as a git submodule in test/bats (with bats-support and bats-assert)
-- Create test/test_helper.bash with setup/teardown using BATS_TEST_TMPDIR for isolation
-- Add integration-test target to Makefile (build + bats), keep unit tests separate
+1. `internal/tickets/ticket.go`:
+   - Remove `StatePlanned` constant
+   - Remove `planned` from `ValidStates` slice
+   - Update `NextState`: `StateRefined` returns itself (no more cycling forward)
+   - Update `PrevState`: remove `StatePlanned` case
+   - Update `StateIcon`: remove planned icon case
+   - Update `IsValid` validation message in `file.go` (`SetState`): change `"new, refined, planned"` to `"new, refined"`
 
-**Test files to create (one per command):**
-- test/add.bats — add ticket, add with description, duplicate titles, empty title
-- test/list.bats — list empty, list with tickets, ordering
-- test/show.bats — show by ID, show by title, show nonexistent
-- test/done.bats — mark done, done nonexistent, done by ID/title
-- test/set_state.bats — cycle through states, invalid state
-- test/set_description.bats — set, update, clear description
-- test/move_up.bats — reorder tickets, move first up (no-op)
-- test/move_down.bats — reorder tickets, move last down (no-op)
-- test/quick_add.bats — interactive add via stdin
-- test/main.bats — version flag, help, unknown command
+2. `internal/tui/tui.go`:
+   - Remove `tickets.StatePlanned` cases from `stateStyled()`
 
-**Test helper pattern (from gob):**
-- Each test uses a fresh temp dir with its own .tickets.md
-- setup() sets TODO_DIR to BATS_TEST_TMPDIR, builds binary path
-- teardown() cleans up
-- Helper functions for common assertions (ticket exists, ticket has state, etc.)
+3. `internal/tui/styles.go`:
+   - Remove `ticketPlanStyle` and `ticketPlanSelStyle` if they exist
 
-**Makefile changes:**
-- Add integration-test target: build then run bats
-- Update test target to run both unit and integration tests
+4. `SKILL.md` (tickets skill):
+   - Remove `planned` from the states table
+
+**This is a foundational change — do it first before writing integration tests so the API is stable.**
 
 ## Set up release pipeline with GoReleaser and GitHub Actions
 ---
 id: uY3
 state: refined
 ---
-Set up automated releases following the same pattern as juanibiapina/gob:
+Set up automated releases with GoReleaser and GitHub Actions, following the juanibiapina/gob pattern.
 
-**GitHub Actions workflows:**
-1. `.github/workflows/build-and-test.yaml` — CI on push to main and PRs
-   - Build with `make build`
-   - Run tests with `make test`
-2. `.github/workflows/release.yaml` — Triggered by `v*.*.*` tags
-   - Uses goreleaser/goreleaser-action@v6 with GoReleaser v2
-   - Needs `contents: write` permission
-   - Uses GITHUB_TOKEN and HOMEBREW_TAP_TOKEN secrets
+**Prerequisites:** Ideally have integration tests (USP) in place first so CI runs them before release.
 
-**GoReleaser config (`.goreleaser.yaml`):**
-- Build for linux/darwin on amd64/arm64 with CGO_ENABLED=0
-- Inject version via ldflags: `-X github.com/juanibiapina/todo/internal/version.Version={{.Version}}`
-- Archives with README.md and LICENSE.md
+**1. GitHub Actions workflows:**
+
+`.github/workflows/build-and-test.yaml` — CI on push to main and PRs:
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - run: make build
+      - run: make test
+```
+
+`.github/workflows/release.yaml` — triggered by `v*.*.*` tags:
+```yaml
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+```
+
+**2. GoReleaser config (`.goreleaser.yaml`):**
+- Builds: linux/darwin × amd64/arm64, `CGO_ENABLED=0`
+- Ldflags: `-X github.com/juanibiapina/todo/internal/version.Version={{.Version}}`
+- Archives with README.md + LICENSE.md
 - SHA256 checksums
-- GitHub changelog with conventional commit grouping (feat/fix/others)
-- Release header/footer with download instructions
-- Homebrew tap formula in juanibiapina/homebrew-taps using HOMEBREW_TAP_TOKEN
+- Changelog: group by conventional commit prefix (feat/fix/others)
+- Homebrew tap: `juanibiapina/homebrew-taps` using `HOMEBREW_TAP_TOKEN`
 
-**Release docs (`docs/releases.md`):**
-- Document the tag-based release process
+**3. Release docs (`docs/releases.md`):**
+- Document tag-based release process
 - Semver format: `v1.2.3`, pre-releases: `v1.0.0-beta.1`
-- Steps: update CHANGELOG.md, commit, tag, push tag
+- Steps: update CHANGELOG, commit, `git tag v1.x.x`, `git push --tags`
 
-**Makefile update:**
-- Ensure `test` target runs both unit and integration tests (once bats tests exist)
+**4. Makefile update:**
+- `test` target should run both `unit-test` and `integration-test` (once bats tests exist)
 
-## Commands should reference tickets by ID only, not title
+## Space shortcut should paste ticket into calling terminal
 ---
-id: eEr
+id: EUZ
 state: refined
 ---
-Currently all commands accept both a 3-character ID and a title to reference tickets (via findTicket which tries ID first, then falls back to title match). Change commands to accept only the ticket ID. This simplifies the interface and avoids ambiguity when titles happen to be 3 characters long.
+When running `todo tui` inside a tmux popup, the space shortcut should paste the ticket text directly into the calling tmux pane instead of copying to clipboard.
 
-Commands affected: show, done, set-state, set-description, move-up, move-down.
+**Detection:**
+- Check `$TMUX` env var to confirm we're in tmux
+- Check `$TMUX_PANE` for the current pane ID
+- Detect popup context: when in a tmux popup, the popup pane is different from the pane that launched it. Use `tmux display-message -p '#{pane_id}'` to get current pane, and `tmux list-panes -F '#{pane_id}'` on the parent window to find the originating pane. Alternatively, accept a `--tmux-pane <pane-id>` flag that the caller passes in.
 
-Changes needed:
-- Remove title fallback from findTicket and findTicketIndex in internal/tickets/file.go
-- Update cobra Use/Long strings to say `<id>` instead of `<title|id>`
-- Update help text to remove references to title lookup
+**Paste approach:**
+- Use `tmux set-buffer` + `tmux paste-buffer -t <target-pane>` to send text to the originating pane
+- Or use `tmux send-keys -t <target-pane> -- "<text>"` (simpler but needs escaping)
+- `set-buffer` + `paste-buffer` is cleaner for multi-line content
 
-## Simplify ticket states to new, refined, and done
----
-id: UDK
-state: refined
----
-Consider removing the planned state. The current states are new, refined, planned, and done (removed from file). In practice, planned may not add value — a ticket is either new (no description), refined (well-defined problem with description), or done (completed and removed). Dropping planned simplifies state cycling, the TUI icons, and the mental model.
+**Changes:**
+
+1. `cmd/tui.go`: add `--tmux-pane` flag (optional, string)
+2. `internal/tui/tui.go`:
+   - Accept a `tmuxTargetPane` option in `New()` or as a field on `Model`
+   - In `copyTicket()`: if `tmuxTargetPane` is set, use `exec.Command("tmux", "set-buffer", "--", text)` then `exec.Command("tmux", "paste-buffer", "-t", targetPane)` instead of clipboard
+   - Fall back to clipboard if not in tmux or flag not provided
+
+**Usage:** The user's shell alias/script would call `todo tui --tmux-pane "$TMUX_PANE"` before opening the popup, so the TUI knows where to paste back.
 
 ## Render markdown in detail panel with glamour
 ---
 id: xoN
 state: refined
 ---
-The right-side detail panel currently displays raw text. Use charmbracelet/glamour to render the ticket description as styled markdown (headings, code blocks, lists, etc.). Glamour is the Charm ecosystem's markdown renderer and integrates naturally with bubbletea/lipgloss. It supports custom styles and width constraints, which fits the viewport panel well.
+The detail panel in the TUI currently displays raw markdown text. Use `charmbracelet/glamour` to render descriptions as styled markdown (headings, bold, code blocks, lists, etc.).
+
+**Changes:**
+
+1. `go.mod`: add `github.com/charmbracelet/glamour` dependency
+
+2. `internal/tui/tui.go` — `updateDetailContent()`:
+   - After building the metadata header (title, ID, state), render `t.Description` through glamour
+   - Use `glamour.RenderWithEnvironmentConfig(t.Description)` or create a renderer with `glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.detailView.Width))`
+   - Append the rendered output instead of raw `t.Description`
+   - Handle render errors gracefully (fall back to raw text)
+
+3. Consider caching the rendered output to avoid re-rendering on every tick (the description only changes when cursor moves or tickets reload).
+
+**Notes:**
+- Glamour is part of the Charm ecosystem (same as bubbletea/lipgloss), so it integrates naturally
+- The `WithAutoStyle()` option picks dark/light based on terminal background
+- `WithWordWrap(width)` respects the panel width constraint
