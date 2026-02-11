@@ -92,8 +92,3 @@ When running `todo tui` inside a tmux popup, the space shortcut should paste the
    - Fall back to clipboard if not in tmux or flag not provided
 
 **Usage:** The user's shell alias/script would call `todo tui --tmux-pane "$TMUX_PANE"` before opening the popup, so the TUI knows where to paste back.
-
-## create agents.md inspired by juanibiapina/gob
----
-id: wlj
----
