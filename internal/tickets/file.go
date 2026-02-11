@@ -137,19 +137,10 @@ func existingIDs(tickets []*Ticket) map[string]bool {
 	return ids
 }
 
-// findTicket resolves a reference (3-char ID or title) to a ticket.
-func findTicket(tickets []*Ticket, ref string) *Ticket {
-	// Try ID first if 3 chars
-	if len(ref) == 3 {
-		for _, t := range tickets {
-			if t.ID == ref {
-				return t
-			}
-		}
-	}
-	// Fall back to title match
+// findTicket resolves a ticket ID to a ticket.
+func findTicket(tickets []*Ticket, id string) *Ticket {
 	for _, t := range tickets {
-		if t.Title == ref {
+		if t.ID == id {
 			return t
 		}
 	}
@@ -223,7 +214,7 @@ func Done(dir string, ref string) (string, error) {
 	var remaining []*Ticket
 	var title string
 	for _, t := range tickets {
-		if (len(ref) == 3 && t.ID == ref) || t.Title == ref {
+		if t.ID == ref {
 			title = t.Title
 			continue
 		}
@@ -267,17 +258,10 @@ func SetState(dir string, ref string, state State) (string, error) {
 	return t.Title, nil
 }
 
-// findTicketIndex resolves a reference to an index in the ticket slice.
-func findTicketIndex(tickets []*Ticket, ref string) int {
-	if len(ref) == 3 {
-		for i, t := range tickets {
-			if t.ID == ref {
-				return i
-			}
-		}
-	}
+// findTicketIndex resolves a ticket ID to an index in the ticket slice.
+func findTicketIndex(tickets []*Ticket, id string) int {
 	for i, t := range tickets {
-		if t.Title == ref {
+		if t.ID == id {
 			return i
 		}
 	}

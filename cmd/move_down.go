@@ -9,7 +9,7 @@ import (
 )
 
 var moveDownCmd = &cobra.Command{
-	Use:   "move-down <title|id>",
+	Use:   "move-down <id>",
 	Short: "Move a ticket down (swap with next)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

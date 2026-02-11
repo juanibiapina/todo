@@ -87,7 +87,7 @@ func TestAddWithMultilineBacktickDescription(t *testing.T) {
 	}
 }
 
-func TestShowByIDAndTitle(t *testing.T) {
+func TestShowByID(t *testing.T) {
 	dir := tempDir(t)
 
 	ticket, err := Add(dir, "Test ticket", "")
@@ -101,14 +101,6 @@ func TestShowByIDAndTitle(t *testing.T) {
 	}
 	if byID.Title != "Test ticket" {
 		t.Errorf("byID title = %q", byID.Title)
-	}
-
-	byTitle, err := Show(dir, "Test ticket")
-	if err != nil {
-		t.Fatalf("Show by title: %v", err)
-	}
-	if byTitle.ID != ticket.ID {
-		t.Errorf("byTitle ID = %q, want %q", byTitle.ID, ticket.ID)
 	}
 }
 
@@ -225,7 +217,10 @@ func TestMultipleTickets(t *testing.T) {
 	dir := tempDir(t)
 
 	Add(dir, "First", "")
-	Add(dir, "Second", "With description")
+	second, err := Add(dir, "Second", "With description")
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
 	Add(dir, "Third", "")
 
 	tickets, err := List(dir)
@@ -236,8 +231,8 @@ func TestMultipleTickets(t *testing.T) {
 		t.Fatalf("len = %d, want 3", len(tickets))
 	}
 
-	// Remove middle one
-	Done(dir, "Second")
+	// Remove middle one by ID
+	Done(dir, second.ID)
 
 	tickets, err = List(dir)
 	if err != nil {

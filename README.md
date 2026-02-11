@@ -54,7 +54,6 @@ todo list
 
 ```bash
 todo show aBc
-todo show 'Fix login timeout'
 ```
 
 ### Set state

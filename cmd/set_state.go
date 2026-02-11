@@ -9,13 +9,11 @@ import (
 )
 
 var setStateCmd = &cobra.Command{
-	Use:   "set-state <title|id> <state>",
+	Use:   "set-state <id> <state>",
 	Short: "Change a ticket's state",
 	Long: `Change the state of a ticket.
 
-Valid states: new, refined, planned
-
-The ticket can be referenced by its 3-character ID or its title.`,
+Valid states: new, refined, planned`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ref := args[0]

@@ -9,11 +9,9 @@ import (
 )
 
 var doneCmd = &cobra.Command{
-	Use:   "done <title|id>",
+	Use:   "done <id>",
 	Short: "Mark a ticket as done (remove it)",
-	Long: `Remove a ticket from the file, marking it as complete.
-
-The ticket can be referenced by its 3-character ID or its title.`,
+	Long:  `Remove a ticket from the file, marking it as complete.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ref := args[0]

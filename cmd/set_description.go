@@ -11,7 +11,7 @@ import (
 )
 
 var setDescriptionCmd = &cobra.Command{
-	Use:   "set-description <title|id> [description]",
+	Use:   "set-description <id> [description]",
 	Short: "Set or replace a ticket's description",
 	Long: `Set or replace the description of a ticket.
 
@@ -30,9 +30,7 @@ This allows heredocs and pipes for rich content:
       // new implementation
   }
   ` + "```" + `
-  EOF
-
-The ticket can be referenced by its 3-character ID or its title.`,
+  EOF`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ref := args[0]
