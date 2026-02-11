@@ -6,11 +6,11 @@ load test_helper
   local out
   out="$(todo add "State test")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(extract_id_from_add "${out}")"
 
   run todo set-state "${id}" refined
   assert_success
-  assert_output --partial "Set state to refined"
+  assert_output --partial "refined"
 
   [[ "$(ticket_state "${id}")" == "refined" ]]
 }
@@ -19,11 +19,11 @@ load test_helper
   local out
   out="$(todo add "Refined ticket" "Has description")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(extract_id_from_add "${out}")"
 
   run todo set-state "${id}" new
   assert_success
-  assert_output --partial "Set state to new"
+  assert_output --partial "new"
 
   [[ "$(ticket_state "${id}")" == "new" ]]
 }
@@ -32,7 +32,7 @@ load test_helper
   local out
   out="$(todo add "Plan me")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(extract_id_from_add "${out}")"
 
   run todo set-state "${id}" planned
   assert_failure
@@ -43,7 +43,7 @@ load test_helper
   local out
   out="$(todo add "Bad state")"
   local id
-  id="$(echo "${out}" | awk '{print $3}')"
+  id="$(extract_id_from_add "${out}")"
 
   run todo set-state "${id}" invalid
   assert_failure

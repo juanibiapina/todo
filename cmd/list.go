@@ -11,9 +11,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all tickets",
-	Long: `List all tickets with their ID, state, and title.
-
-Output format: ID [state   ] Title`,
+	Long: `List all tickets with their state icon, ID, and title.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
@@ -32,7 +30,7 @@ Output format: ID [state   ] Title`,
 		}
 
 		for _, t := range items {
-			fmt.Println(t.String())
+			fmt.Println(formatTicketLine(t))
 		}
 
 		return nil

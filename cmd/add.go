@@ -65,11 +65,7 @@ A ticket with a description gets state "refined".`,
 			return err
 		}
 
-		if description != "" {
-			fmt.Printf("Added ticket %s (refined): %s\n", ticket.ID, ticket.Title)
-		} else {
-			fmt.Printf("Added ticket %s (new): %s\n", ticket.ID, ticket.Title)
-		}
+		fmt.Printf("Added %s %s %s\n", cliStateIcon(ticket.State), cliID(ticket.ID), ticket.Title)
 
 		return nil
 	},

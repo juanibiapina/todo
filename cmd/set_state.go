@@ -13,7 +13,7 @@ var setStateCmd = &cobra.Command{
 	Short: "Change a ticket's state",
 	Long: `Change the state of a ticket.
 
-Valid states: new, refined, planned`,
+Valid states: new, refined`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ref := args[0]
@@ -29,7 +29,7 @@ Valid states: new, refined, planned`,
 			return err
 		}
 
-		fmt.Printf("Set state to %s: %s\n", state, title)
+		fmt.Printf("State → %s %s: %s\n", cliStateIcon(state), state, title)
 
 		return nil
 	},

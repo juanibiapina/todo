@@ -16,7 +16,6 @@ load test_helper
   assert_success
   assert_output --partial "First ticket"
   assert_output --partial "Second ticket"
-  assert_output --partial "new"
 }
 
 @test "list: preserves insertion order" {
@@ -44,8 +43,14 @@ load test_helper
   run todo list
   assert_success
 
-  # New ticket should show 'new' state
-  echo "${output}" | grep "New ticket" | grep -q "new"
-  # Refined ticket should show 'refined' state
-  echo "${output}" | grep "Refined ticket" | grep -q "refined"
+  # Verify both tickets appear
+  assert_output --partial "New ticket"
+  assert_output --partial "Refined ticket"
+
+  # Verify actual states via show command
+  local new_id refined_id
+  new_id="$(echo "${output}" | grep "New ticket" | awk '{print $2}')"
+  refined_id="$(echo "${output}" | grep "Refined ticket" | awk '{print $2}')"
+  [[ "$(ticket_state "${new_id}")" == "new" ]]
+  [[ "$(ticket_state "${refined_id}")" == "refined" ]]
 }

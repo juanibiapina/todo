@@ -13,7 +13,7 @@ var rootCmd = &cobra.Command{
 	Long: `A CLI for managing tickets stored as markdown in the current directory.
 
 Tickets are stored in a TODO.md file. Each ticket has a title, a 3-character
-ID, a state (new, refined, planned), and an optional description.
+ID, a state (new, refined), and an optional description.
 
 Descriptions can be passed via stdin to support multi-line content with backticks,
 code blocks, and any special characters without shell escaping issues.`,

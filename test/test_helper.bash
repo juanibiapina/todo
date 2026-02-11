@@ -40,7 +40,12 @@ ticket_state() {
   todo show "${id}" | grep "^state:" | awk '{print $2}'
 }
 
-# Helper: get the ID from an "Added ticket XXX" message
+# Helper: get the ID from an "Added ticket XXX" message (legacy)
 extract_id() {
   echo "$1" | grep -oE '[A-Za-z0-9]{3}' | head -1
+}
+
+# Helper: extract ID from add command output "Added <icon> <ID> <title>"
+extract_id_from_add() {
+  echo "$1" | awk '{print $3}'
 }

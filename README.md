@@ -46,9 +46,11 @@ EOF
 
 ```bash
 todo list
-# aBc [new     ] Fix login timeout
-# xYz [refined ] Refactor auth module
+# ○ aBc Fix login timeout
+# ◐ xYz Refactor auth module
 ```
+
+State icons and IDs are color-coded when output is a terminal (muted for new, cyan for refined, magenta for IDs).
 
 ### Show a ticket
 
@@ -60,10 +62,9 @@ todo show aBc
 
 ```bash
 todo set-state aBc refined
-todo set-state aBc planned
 ```
 
-Valid states: `new`, `refined`, `planned`
+Valid states: `new`, `refined`
 
 ### Set description
 
@@ -83,11 +84,34 @@ The `validateToken` function doesn't handle expired tokens.
 EOF
 ```
 
+### Reorder tickets
+
+```bash
+todo move-up aBc
+todo move-down aBc
+```
+
 ### Complete a ticket
 
 ```bash
 todo done aBc
 ```
+
+### Interactive TUI
+
+```bash
+todo tui
+```
+
+Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, delete, cycle state, and reorder tickets interactively.
+
+### Quick add (for tmux popups)
+
+```bash
+todo quick-add
+```
+
+Opens an interactive prompt to quickly add a ticket and exit.
 
 ## File Format
 
@@ -109,29 +133,16 @@ state: refined
 ---
 Move auth logic to middleware layer.
 Multiple lines of description are supported.
-
-## Planned ticket
----
-id: Qr5
-state: planned
----
-### Problem
-Description of the problem.
-
-### Plan
-1. Step one
-2. Step two
 ```
 
 Each `##` heading is a ticket title. A YAML front matter block (`---` delimited) follows with `id` and `state`. Everything after the closing `---` until the next `##` is the description.
 
 ## States
 
-| State | Meaning |
-|-------|---------|
-| `new` | Just created, no description |
-| `refined` | Has a description |
-| `planned` | Analyzed, has execution plan. Ready to implement |
+| State | Icon | Meaning |
+|-------|------|---------|
+| `new` | ○ | Just created, no description |
+| `refined` | ◐ | Has a description |
 
 ## License
 
