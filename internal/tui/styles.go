@@ -50,7 +50,6 @@ var (
 	// Ticket list — normal
 	ticketNewStyle = lipgloss.NewStyle().Foreground(mutedColor)
 	ticketRefStyle = lipgloss.NewStyle().Foreground(colorCyan)
-	ticketPlanStyle = lipgloss.NewStyle().Foreground(successColor)
 	ticketIDStyle  = lipgloss.NewStyle().Foreground(colorMagenta)
 	ticketTitleStyle = lipgloss.NewStyle()
 
@@ -58,7 +57,6 @@ var (
 	selectedBgStyle         = lipgloss.NewStyle().Background(selectionBg)
 	ticketNewSelStyle       = lipgloss.NewStyle().Foreground(mutedColor).Background(selectionBg)
 	ticketRefSelStyle       = lipgloss.NewStyle().Foreground(colorCyan).Background(selectionBg)
-	ticketPlanSelStyle      = lipgloss.NewStyle().Foreground(successColor).Background(selectionBg)
 	ticketIDSelStyle        = lipgloss.NewStyle().Foreground(colorMagenta).Background(selectionBg)
 	ticketTitleSelStyle     = lipgloss.NewStyle().Background(selectionBg)
 )

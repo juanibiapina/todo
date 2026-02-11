@@ -556,8 +556,6 @@ func (m Model) stateStyled(state tickets.State, selected bool) string {
 			return ticketNewSelStyle.Render(icon)
 		case tickets.StateRefined:
 			return ticketRefSelStyle.Render(icon)
-		case tickets.StatePlanned:
-			return ticketPlanSelStyle.Render(icon)
 		default:
 			return ticketNewSelStyle.Render(icon)
 		}
@@ -567,8 +565,6 @@ func (m Model) stateStyled(state tickets.State, selected bool) string {
 		return ticketNewStyle.Render(icon)
 	case tickets.StateRefined:
 		return ticketRefStyle.Render(icon)
-	case tickets.StatePlanned:
-		return ticketPlanStyle.Render(icon)
 	default:
 		return ticketNewStyle.Render(icon)
 	}

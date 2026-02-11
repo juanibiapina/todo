@@ -235,7 +235,7 @@ func Done(dir string, ref string) (string, error) {
 // SetState changes a ticket's state.
 func SetState(dir string, ref string, state State) (string, error) {
 	if !state.IsValid() {
-		return "", fmt.Errorf("invalid state: %s (valid: new, refined, planned)", state)
+		return "", fmt.Errorf("invalid state: %s (valid: new, refined)", state)
 	}
 
 	path := FilePath(dir)

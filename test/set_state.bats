@@ -28,17 +28,15 @@ load test_helper
   [[ "$(ticket_state "${id}")" == "new" ]]
 }
 
-@test "set-state: change to planned" {
+@test "set-state: planned is no longer valid" {
   local out
   out="$(todo add "Plan me")"
   local id
   id="$(echo "${out}" | awk '{print $3}')"
 
   run todo set-state "${id}" planned
-  assert_success
-  assert_output --partial "Set state to planned"
-
-  [[ "$(ticket_state "${id}")" == "planned" ]]
+  assert_failure
+  assert_output --partial "invalid state"
 }
 
 @test "set-state: invalid state returns error" {

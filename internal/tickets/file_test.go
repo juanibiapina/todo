@@ -137,7 +137,7 @@ func TestSetState(t *testing.T) {
 		t.Fatalf("Add: %v", err)
 	}
 
-	_, err = SetState(dir, ticket.ID, StatePlanned)
+	_, err = SetState(dir, ticket.ID, StateRefined)
 	if err != nil {
 		t.Fatalf("SetState: %v", err)
 	}
@@ -146,8 +146,8 @@ func TestSetState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Show: %v", err)
 	}
-	if loaded.State != StatePlanned {
-		t.Errorf("state = %q, want %q", loaded.State, StatePlanned)
+	if loaded.State != StateRefined {
+		t.Errorf("state = %q, want %q", loaded.State, StateRefined)
 	}
 }
 

@@ -8,11 +8,10 @@ type State string
 const (
 	StateNew     State = "new"
 	StateRefined State = "refined"
-	StatePlanned State = "planned"
 )
 
 // ValidStates contains all valid ticket states.
-var ValidStates = []State{StateNew, StateRefined, StatePlanned}
+var ValidStates = []State{StateNew, StateRefined}
 
 // IsValid checks if a state is valid.
 func (s State) IsValid() bool {
@@ -51,8 +50,6 @@ func NextState(s State) State {
 	switch s {
 	case StateNew:
 		return StateRefined
-	case StateRefined:
-		return StatePlanned
 	default:
 		return s
 	}
@@ -61,8 +58,6 @@ func NextState(s State) State {
 // PrevState returns the previous state in the workflow.
 func PrevState(s State) State {
 	switch s {
-	case StatePlanned:
-		return StateRefined
 	case StateRefined:
 		return StateNew
 	default:
@@ -77,8 +72,6 @@ func StateIcon(s State) string {
 		return "\uf10c" // nf-fa-circle_o
 	case StateRefined:
 		return "\uf042" // nf-fa-adjust
-	case StatePlanned:
-		return "\uf111" // nf-fa-circle
 	default:
 		return "\uf10c"
 	}

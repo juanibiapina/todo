@@ -1,33 +1,5 @@
 # TODO
 
-## Simplify ticket states to new, refined, and done
----
-id: UDK
-state: refined
----
-Remove the `planned` state. Current states are `new`, `refined`, `planned`, and `done` (removed from file). In practice, `planned` adds no value — a ticket is either `new` (no description), `refined` (well-defined with description), or `done` (completed and removed).
-
-**Changes:**
-
-1. `internal/tickets/ticket.go`:
-   - Remove `StatePlanned` constant
-   - Remove `planned` from `ValidStates` slice
-   - Update `NextState`: `StateRefined` returns itself (no more cycling forward)
-   - Update `PrevState`: remove `StatePlanned` case
-   - Update `StateIcon`: remove planned icon case
-   - Update `IsValid` validation message in `file.go` (`SetState`): change `"new, refined, planned"` to `"new, refined"`
-
-2. `internal/tui/tui.go`:
-   - Remove `tickets.StatePlanned` cases from `stateStyled()`
-
-3. `internal/tui/styles.go`:
-   - Remove `ticketPlanStyle` and `ticketPlanSelStyle` if they exist
-
-4. `SKILL.md` (tickets skill):
-   - Remove `planned` from the states table
-
-**This is a foundational change — do it first before writing integration tests so the API is stable.**
-
 ## Set up release pipeline with GoReleaser and GitHub Actions
 ---
 id: uY3
