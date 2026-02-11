@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2026-02-11
 
+### Changed
+
+- Renamed tickets file from `.tickets.md` to `TODO.md`
+
 ### Added
 
 - `todo tui` - Full-screen bubbletea TUI with split-panel layout (ticket list + detail view)

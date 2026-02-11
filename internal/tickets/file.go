@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const defaultFileName = ".tickets.md"
+const defaultFileName = "TODO.md"
 
 // FilePath returns the path to the tickets file in the given directory.
 func FilePath(dir string) string {
@@ -118,12 +118,12 @@ func write(path string, header string, tickets []*Ticket) error {
 	return os.WriteFile(path, []byte(b.String()), 0644)
 }
 
-// ensureFile creates the tickets file with a header if it doesn't exist.
-func ensureFile(path string) error {
+// EnsureFile creates the tickets file with a header if it doesn't exist.
+func EnsureFile(path string) error {
 	if _, err := os.Stat(path); err == nil {
 		return nil
 	}
-	return os.WriteFile(path, []byte("# Tickets\n"), 0644)
+	return os.WriteFile(path, []byte("# TODO\n"), 0644)
 }
 
 // existingIDs collects all IDs from a ticket list.
@@ -166,7 +166,7 @@ func List(dir string) ([]*Ticket, error) {
 // Add creates a new ticket and returns it.
 func Add(dir string, title string, description string) (*Ticket, error) {
 	path := FilePath(dir)
-	if err := ensureFile(path); err != nil {
+	if err := EnsureFile(path); err != nil {
 		return nil, err
 	}
 

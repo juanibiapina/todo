@@ -292,13 +292,13 @@ func TestFileFormat(t *testing.T) {
 
 	Add(dir, "My Ticket", "Some description")
 
-	data, err := os.ReadFile(filepath.Join(dir, ".tickets.md"))
+	data, err := os.ReadFile(filepath.Join(dir, "TODO.md"))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
 
 	content := string(data)
-	if !strings.Contains(content, "# Tickets") {
+	if !strings.Contains(content, "# TODO") {
 		t.Error("missing header")
 	}
 	if !strings.Contains(content, "## My Ticket") {

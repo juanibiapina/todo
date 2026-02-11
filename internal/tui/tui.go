@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -769,11 +768,8 @@ func (m Model) renderHelpModal() string {
 // Start launches the TUI.
 func Start(dir string) error {
 	// Ensure tickets file exists
-	path := tickets.FilePath(dir)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.WriteFile(path, []byte("# Tickets\n"), 0644); err != nil {
-			return err
-		}
+	if err := tickets.EnsureFile(tickets.FilePath(dir)); err != nil {
+		return err
 	}
 
 	p := tea.NewProgram(New(dir), tea.WithAltScreen())

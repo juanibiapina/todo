@@ -2,7 +2,7 @@
 
 Local ticket tracking in markdown.
 
-`todo` is a CLI for managing tickets stored as a `.tickets.md` file in your project directory. Each ticket has a title, a 3-character ID, a state, and an optional description.
+`todo` is a CLI for managing tickets stored as a `TODO.md` file in your project directory. Each ticket has a title, a 3-character ID, a state, and an optional description.
 
 Descriptions can be passed via stdin (heredocs, pipes) so multi-line content with backticks, code blocks, and special characters works without shell escaping issues.
 
@@ -92,10 +92,10 @@ todo done aBc
 
 ## File Format
 
-Tickets are stored in `.tickets.md` in the current directory:
+Tickets are stored in `TODO.md` in the current directory:
 
 ```markdown
-# Tickets
+# TODO
 
 ## Fix login timeout
 ---
