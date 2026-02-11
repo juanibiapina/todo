@@ -142,7 +142,7 @@ Each `##` heading is a ticket title. A YAML front matter block (`---` delimited)
 | State | Icon | Meaning |
 |-------|------|---------|
 | `new` | ○ | Just created, no description |
-| `refined` | ◐ | Has a description |
+| `refined` | ● | Has a description |
 
 ## License
 

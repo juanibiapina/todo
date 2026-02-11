@@ -71,7 +71,7 @@ func StateIcon(s State) string {
 	case StateNew:
 		return "\uf10c" // nf-fa-circle_o
 	case StateRefined:
-		return "\uf042" // nf-fa-adjust
+		return "\uf111" // nf-fa-circle
 	default:
 		return "\uf10c"
 	}
