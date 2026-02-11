@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/juanibiapina/todo/internal/tickets"
@@ -52,6 +53,12 @@ type Model struct {
 
 	textInput  textinput.Model
 	detailView viewport.Model
+
+	// Cached rendered markdown for the detail panel
+	cachedDetailID    string // ticket ID of cached render
+	cachedDetailDesc  string // raw description that was rendered
+	cachedDetailWidth int    // width used for rendering
+	cachedRendered    string // glamour-rendered output
 }
 
 // New creates a new TUI model for the given directory.
@@ -164,6 +171,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) renderMarkdown(text string, width int) string {
+	if width <= 0 {
+		width = 80
+	}
+	r, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(width),
+	)
+	if err != nil {
+		return ansi.Wrap(text, width, "")
+	}
+	rendered, err := r.Render(text)
+	if err != nil {
+		return ansi.Wrap(text, width, "")
+	}
+	return strings.TrimRight(rendered, "\n")
+}
+
 func (m *Model) updateDetailContent() {
 	if len(m.items) == 0 || m.scroll.Cursor >= len(m.items) {
 		m.detailView.SetContent(mutedStyle.Render("No ticket selected"))
@@ -188,12 +213,18 @@ func (m *Model) updateDetailContent() {
 
 	if t.Description != "" {
 		b.WriteString("\n")
-		// Wrap description to fit panel width
 		descWidth := m.detailView.Width
-		if descWidth > 0 {
-			b.WriteString(ansi.Wrap(t.Description, descWidth, ""))
+
+		// Use cached render if ticket/description/width haven't changed
+		if t.ID == m.cachedDetailID && t.Description == m.cachedDetailDesc && descWidth == m.cachedDetailWidth {
+			b.WriteString(m.cachedRendered)
 		} else {
-			b.WriteString(t.Description)
+			rendered := m.renderMarkdown(t.Description, descWidth)
+			m.cachedDetailID = t.ID
+			m.cachedDetailDesc = t.Description
+			m.cachedDetailWidth = descWidth
+			m.cachedRendered = rendered
+			b.WriteString(rendered)
 		}
 	}
 
