@@ -23,7 +23,7 @@ make install  # go install
 
 ### Add a ticket
 
-```bash
+````bash
 # Simple ticket (state: new)
 todo add 'Fix login timeout'
 
@@ -40,7 +40,7 @@ The `handleLogin` function in `auth.go` needs a longer timeout:
 ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 ```
 EOF
-```
+````
 
 ### List tickets
 
