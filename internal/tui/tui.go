@@ -234,7 +234,7 @@ func (m Model) updateModal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q", "ctrl+c", "esc":
 		return m, tea.Quit
 
 	case "tab":
@@ -610,7 +610,7 @@ func (m Model) renderStatusBar() string {
 				m.renderKey("tab", "list"),
 			)
 		}
-		parts = append(parts, m.renderKey("?", "help"), m.renderKey("q", "quit"))
+		parts = append(parts, m.renderKey("?", "help"), m.renderKey("esc/q", "quit"))
 
 		leftSide := strings.Join(parts, " ")
 		leftWidth := lipgloss.Width(leftSide)
@@ -757,7 +757,7 @@ func (m Model) renderHelpModal() string {
 		helpKeyStyle.Render("General"),
 		"  " + m.renderKey("tab", "switch panel"),
 		"  " + m.renderKey("?", "this help"),
-		"  " + m.renderKey("q", "quit"),
+		"  " + m.renderKey("esc/q", "quit"),
 	}
 
 	help := helpDescStyle.Render("\npress esc or ? to close")
