@@ -753,11 +753,6 @@ func (m Model) renderHelpModal() string {
 
 // Start launches the TUI.
 func Start(dir string) error {
-	// Ensure tickets file exists
-	if err := tickets.EnsureFile(tickets.FilePath(dir)); err != nil {
-		return err
-	}
-
 	p := tea.NewProgram(New(dir), tea.WithAltScreen())
 	_, err := p.Run()
 	return err

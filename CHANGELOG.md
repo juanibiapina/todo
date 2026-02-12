@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `state:` field from TODO.md format
   - Simpler output: `list` now shows just `ID Title`
 
+### Fixed
+
+- TUI no longer creates TODO.md on startup; file is only created when adding a ticket
+
 ## [0.2.0] - 2026-02-11
 
 ### Changed
