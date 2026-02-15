@@ -2,7 +2,7 @@
 
 Local ticket tracking in markdown.
 
-`todo` is a CLI for managing tickets stored as a `TODO.md` file in your project directory. Each ticket has a title, a 3-character ID, and an optional description.
+`todo` is a CLI for managing tickets stored in a `docs/tickets/` directory in your project. Each ticket is a separate markdown file with a title, a 3-character ID, and an optional description.
 
 Descriptions can be passed via stdin (heredocs, pipes) so multi-line content with backticks, code blocks, and special characters works without shell escaping issues.
 
@@ -76,13 +76,6 @@ The `validateToken` function doesn't handle expired tokens.
 EOF
 ```
 
-### Reorder tickets
-
-```bash
-todo move-up aBc
-todo move-down aBc
-```
-
 ### Complete a ticket
 
 ```bash
@@ -95,7 +88,7 @@ todo done aBc
 todo tui
 ```
 
-Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, delete, and reorder tickets interactively.
+Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, and delete tickets interactively.
 
 ### Quick add (for tmux popups)
 
@@ -107,25 +100,26 @@ Opens an interactive prompt to quickly add a ticket and exit.
 
 ## File Format
 
-Tickets are stored in `TODO.md` in the current directory:
+Tickets are stored in a `docs/tickets/` directory, one file per ticket. Each file is named `<id>-<slug>.md`:
+
+```
+docs/tickets/
+├── aBc-fix-login-timeout.md
+└── xYz-refactor-auth-module.md
+```
+
+Each file contains:
 
 ```markdown
-# TODO
-
-## Fix login timeout
+# Fix login timeout
 ---
 id: aBc
 ---
-
-## Refactor auth module
----
-id: xYz
----
-Move auth logic to middleware layer.
-Multiple lines of description are supported.
+Description goes here.
+Multiple lines are supported.
 ```
 
-Each `##` heading is a ticket title. A YAML front matter block (`---` delimited) follows with `id`. Everything after the closing `---` until the next `##` is the description.
+The `#` heading is the ticket title. A YAML front matter block (`---` delimited) contains the `id`. Everything after the closing `---` is the description.
 
 ## License
 

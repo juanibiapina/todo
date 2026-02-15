@@ -16,7 +16,7 @@ func (t *Ticket) String() string {
 
 // FullString returns the full markdown representation of a ticket.
 func (t *Ticket) FullString() string {
-	s := fmt.Sprintf("## %s\n---\nid: %s\n---\n", t.Title, t.ID)
+	s := fmt.Sprintf("# %s\n---\nid: %s\n---\n", t.Title, t.ID)
 	if t.Description != "" {
 		s += t.Description + "\n"
 	}

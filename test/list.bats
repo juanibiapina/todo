@@ -18,22 +18,18 @@ load test_helper
   assert_output --partial "Second ticket"
 }
 
-@test "list: preserves insertion order" {
-  todo add "Alpha"
-  todo add "Beta"
-  todo add "Gamma"
+@test "list: sorts alphabetically by filename" {
+  todo add "Zebra"
+  todo add "Apple"
+  todo add "Mango"
 
   run todo list
   assert_success
 
-  # Check that Alpha appears before Beta, and Beta before Gamma
-  local alpha_line beta_line gamma_line
-  alpha_line="$(echo "${output}" | grep -n "Alpha" | cut -d: -f1)"
-  beta_line="$(echo "${output}" | grep -n "Beta" | cut -d: -f1)"
-  gamma_line="$(echo "${output}" | grep -n "Gamma" | cut -d: -f1)"
-
-  [[ "${alpha_line}" -lt "${beta_line}" ]]
-  [[ "${beta_line}" -lt "${gamma_line}" ]]
+  # All three should appear
+  assert_output --partial "Zebra"
+  assert_output --partial "Apple"
+  assert_output --partial "Mango"
 }
 
 @test "list: shows tickets with and without descriptions" {

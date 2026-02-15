@@ -142,21 +142,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.messageTime = time.Now()
 		return m, m.loadTickets()
 
-	case moveResultMsg:
-		if msg.err != nil {
-			m.message = fmt.Sprintf("Error: %v", msg.err)
-			m.isError = true
-			m.messageTime = time.Now()
-		} else {
-			// Move cursor to follow the ticket
-			if msg.direction == "up" && m.scroll.Cursor > 0 {
-				m.scroll.Up()
-			} else if msg.direction == "down" && m.scroll.Cursor < len(m.items)-1 {
-				m.scroll.Down(len(m.items))
-			}
-		}
-		return m, m.loadTickets()
-
 	case tea.KeyMsg:
 		if time.Since(m.messageTime) > 3*time.Second {
 			m.message = ""
@@ -313,15 +298,6 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.deleteTicket(m.items[m.scroll.Cursor].ID)
 		}
 
-	case "K":
-		if len(m.items) > 0 {
-			return m, m.moveUp(m.items[m.scroll.Cursor].ID)
-		}
-	case "J":
-		if len(m.items) > 0 {
-			return m, m.moveDown(m.items[m.scroll.Cursor].ID)
-		}
-
 	case " ":
 		if len(m.items) > 0 {
 			return m, m.copyTicket(m.items[m.scroll.Cursor])
@@ -374,17 +350,7 @@ func (m Model) deleteTicket(ref string) tea.Cmd {
 	}
 }
 
-type moveResultMsg struct {
-	direction string // "up" or "down"
-	err       error
-}
 
-func (m Model) moveUp(ref string) tea.Cmd {
-	return func() tea.Msg {
-		_, err := tickets.MoveUp(m.dir, ref)
-		return moveResultMsg{direction: "up", err: err}
-	}
-}
 
 func (m Model) copyTicket(t *tickets.Ticket) tea.Cmd {
 	return func() tea.Msg {
@@ -396,12 +362,7 @@ func (m Model) copyTicket(t *tickets.Ticket) tea.Cmd {
 	}
 }
 
-func (m Model) moveDown(ref string) tea.Cmd {
-	return func() tea.Msg {
-		_, err := tickets.MoveDown(m.dir, ref)
-		return moveResultMsg{direction: "down", err: err}
-	}
-}
+
 
 // View renders the UI.
 func (m Model) View() string {
@@ -584,7 +545,6 @@ func (m Model) renderStatusBar() string {
 				m.renderKey("↑↓", "navigate"),
 				m.renderKey("a", "add"),
 				m.renderKey("d", "done"),
-				m.renderKey("K/J", "reorder"),
 				m.renderKey("space", "copy"),
 				m.renderKey("tab", "detail"),
 			)
@@ -731,7 +691,6 @@ func (m Model) renderHelpModal() string {
 		"  " + m.renderKey("g/G", "first/last"),
 		"  " + m.renderKey("a", "add ticket"),
 		"  " + m.renderKey("d", "mark done (remove)"),
-		"  " + m.renderKey("K/J", "reorder up/down"),
 		"  " + m.renderKey("space", "copy ticket to clipboard"),
 		"",
 		helpKeyStyle.Render("Detail Panel"),

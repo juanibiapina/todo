@@ -15,22 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Tickets now stored as individual files in `docs/tickets/` directory
+  - Each ticket is a separate file named `<id>-<slug>.md`
+  - File format uses `# Title` heading (was `## Title` in TODO.md)
+  - Enables better git diffs and easier manual editing
 - All commands now reference tickets by ID only, not by title
-  - Affects: `show`, `done`, `set-description`, `move-up`, `move-down`
+  - Affects: `show`, `done`, `set-description`
   - Title fallback removed from internal lookup functions
 
 ### Removed
 
+- Removed `move-up` and `move-down` commands (ordering no longer supported)
+- Removed `K`/`J` reorder keybindings from TUI
 - Removed ticket states entirely (no more `new`/`refined` distinction)
   - Removed `set-state` command
   - Removed state icons from list and TUI output
   - Removed `s`/`S` keybindings from TUI
-  - Removed `state:` field from TODO.md format
+  - Removed `state:` field from file format
   - Simpler output: `list` now shows just `ID Title`
 
 ### Fixed
 
-- TUI no longer creates TODO.md on startup; file is only created when adding a ticket
+- TUI no longer creates tickets directory on startup; directory is only created when adding a ticket
 
 ## [0.2.0] - 2026-02-11
 

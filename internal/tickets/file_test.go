@@ -13,6 +13,28 @@ func tempDir(t *testing.T) string {
 	return dir
 }
 
+func TestSlugify(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"Fix login bug", "fix-login-bug"},
+		{"Hello World!", "hello-world"},
+		{"  spaces  ", "spaces"},
+		{"UPPERCASE", "uppercase"},
+		{"special@#$chars", "special-chars"},
+		{"multiple---hyphens", "multiple-hyphens"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		got := slugify(tt.input)
+		if got != tt.want {
+			t.Errorf("slugify(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
 func TestAddAndList(t *testing.T) {
 	dir := tempDir(t)
 
@@ -121,6 +143,13 @@ func TestDone(t *testing.T) {
 	if len(tickets) != 0 {
 		t.Errorf("len = %d, want 0", len(tickets))
 	}
+
+	// Verify file is actually deleted
+	pattern := filepath.Join(DirPath(dir), ticket.ID+"-*.md")
+	matches, _ := filepath.Glob(pattern)
+	if len(matches) != 0 {
+		t.Errorf("file still exists: %v", matches)
+	}
 }
 
 func TestSetDescription(t *testing.T) {
@@ -198,13 +227,13 @@ func TestMultipleTickets(t *testing.T) {
 	if len(tickets) != 2 {
 		t.Fatalf("len = %d, want 2", len(tickets))
 	}
-	if tickets[0].Title != "First" || tickets[1].Title != "Third" {
-		t.Errorf("remaining = %q, %q", tickets[0].Title, tickets[1].Title)
-	}
 }
 
 func TestNotFoundErrors(t *testing.T) {
 	dir := tempDir(t)
+
+	// Ensure directory exists
+	EnsureDir(dir)
 
 	_, err := Show(dir, "nonexistent")
 	if err == nil {
@@ -237,24 +266,77 @@ func TestListEmptyDir(t *testing.T) {
 func TestFileFormat(t *testing.T) {
 	dir := tempDir(t)
 
-	Add(dir, "My Ticket", "Some description")
+	ticket, err := Add(dir, "My Ticket", "Some description")
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
 
-	data, err := os.ReadFile(filepath.Join(dir, "TODO.md"))
+	// Check file exists in tickets directory with correct name pattern
+	expectedFilename := ticket.ID + "-my-ticket.md"
+	path := filepath.Join(DirPath(dir), expectedFilename)
+
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
 
 	content := string(data)
-	if !strings.Contains(content, "# TODO") {
-		t.Error("missing header")
+	if !strings.HasPrefix(content, "# My Ticket\n") {
+		t.Error("missing or wrong title heading")
 	}
-	if !strings.Contains(content, "## My Ticket") {
-		t.Error("missing ticket heading")
-	}
-	if !strings.Contains(content, "id:") {
+	if !strings.Contains(content, "id: "+ticket.ID) {
 		t.Error("missing id")
 	}
 	if !strings.Contains(content, "Some description") {
 		t.Error("missing description")
+	}
+}
+
+func TestTicketFileName(t *testing.T) {
+	tests := []struct {
+		id    string
+		title string
+		want  string
+	}{
+		{"abc", "Fix login bug", "abc-fix-login-bug.md"},
+		{"XYZ", "Hello World!", "XYZ-hello-world.md"},
+		{"123", "Test", "123-test.md"},
+	}
+
+	for _, tt := range tests {
+		got := ticketFileName(tt.id, tt.title)
+		if got != tt.want {
+			t.Errorf("ticketFileName(%q, %q) = %q, want %q", tt.id, tt.title, got, tt.want)
+		}
+	}
+}
+
+func TestEnsureDir(t *testing.T) {
+	dir := tempDir(t)
+
+	ticketsDir := DirPath(dir)
+
+	// Directory shouldn't exist yet
+	if _, err := os.Stat(ticketsDir); !os.IsNotExist(err) {
+		t.Error("tickets dir should not exist initially")
+	}
+
+	// Ensure creates it
+	if err := EnsureDir(dir); err != nil {
+		t.Fatalf("EnsureDir: %v", err)
+	}
+
+	// Now it should exist
+	info, err := os.Stat(ticketsDir)
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if !info.IsDir() {
+		t.Error("tickets should be a directory")
+	}
+
+	// Calling again should be fine
+	if err := EnsureDir(dir); err != nil {
+		t.Fatalf("EnsureDir (second call): %v", err)
 	}
 }

@@ -59,10 +59,10 @@ load test_helper
   [[ "${count}" -eq 2 ]]
 }
 
-@test "add: creates TODO.md if it doesn't exist" {
-  [[ ! -f TODO.md ]]
+@test "add: creates tickets directory if it doesn't exist" {
+  [[ ! -d docs/tickets ]]
   todo add "First ticket"
-  [[ -f TODO.md ]]
+  [[ -d docs/tickets ]]
 }
 
 @test "add: multiple tickets get unique IDs" {

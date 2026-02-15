@@ -40,6 +40,6 @@ load test_helper
 
   run todo show "${id}"
   assert_success
-  assert_output --partial "## Markdown ticket"
+  assert_output --partial "# Markdown ticket"
   assert_output --partial "---"
 }
