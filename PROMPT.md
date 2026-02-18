@@ -44,7 +44,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors (iteration 6)
 - [x] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence (iteration 7)
 - [x] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors (iteration 8)
-- [ ] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode
+- [x] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode (iteration 9)
 - [ ] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests
 - [ ] Add link/unlink commands for bidirectional linking: `link <id> <id> [id...]` updates all involved files (idempotent), `unlink <id> <target-id>` removes from both. Add bats tests for bidirectional links, 3+ tickets, idempotency, and unlink
 - [ ] Enhance list command with `--status`, `-a/--assignee`, `-T/--tag` filters. Show deps in output: `id [status] - Title <- [dep1, dep2]`. Empty list returns nothing instead of "No tickets". Add bats tests for all filter combinations
@@ -82,6 +82,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `AddDep()` and `RemoveDep()` resolve partial IDs via `findTicketFile` and store the full resolved ID in the deps array — ensures consistent references even when users provide partial IDs
 - Both `AddDep` and `RemoveDep` are idempotent — `AddDep` checks existing deps before appending, `RemoveDep` filters without erroring if dep not present
 - Both ticket and dependency ticket must exist (validated via `findTicketFile`) before any modification — prevents dangling references in the deps array
+- Cobra routes subcommands before parent `Args` validation — `dep tree <id>` works alongside `dep <id> <dep-id>` without changing the parent command's `ExactArgs(2)`
+- Separate maps for cycle detection (ancestors — tracks current path, cleaned up via defer) vs dedup (visited — tracks all expanded nodes) — `--full` disables dedup only, not cycle detection, preventing infinite recursion
+- Children sorted by subtree depth descending then ID ascending — deeper branches appear first for visual clarity; `subtreeDepth()` recursion uses the same ticketMap for consistency
 
 ## History
 
@@ -99,6 +102,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 9: Dep tree command with box-drawing output
+- **Branch**: ralph/dep-tree-command
+- **PR**: #10 (merged)
+- **Summary**: Created `internal/tickets/tree.go` with `DepTree()`, `buildTreeNode()`, `subtreeDepth()`, `formatTree()`, `formatChildren()`, `formatNodeLine()` for tree rendering with box-drawing characters (`├── `, `└── `, `│   `). Created `cmd/dep_tree.go` as cobra subcommand under `depCmd` with `--full` flag. Cycle detection via ancestors map with `(cycle)` markers, deduplication via visited map with `(dup)` markers. Children sorted by subtree depth descending then ID ascending. Missing deps silently skipped. Added 8 unit tests in `tree_test.go` and 9 integration tests in `test/dep_tree.bats`. Updated README.md and CHANGELOG.md. All 58 unit tests and 102 bats tests pass.
 
 ### Iteration 8: Dep/undep commands for dependency management
 - **Branch**: ralph/dep-undep-commands
