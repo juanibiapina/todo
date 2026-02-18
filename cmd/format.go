@@ -17,6 +17,24 @@ func cliID(id string) string {
 	return cliMagenta.Render(id)
 }
 
+func formatReadyLine(t *tickets.Ticket) string {
+	var b strings.Builder
+
+	b.WriteString(cliID(t.ID))
+	b.WriteString(fmt.Sprintf(" [P%d]", t.Priority))
+
+	status := t.Status
+	if status == "" {
+		status = "open"
+	}
+	b.WriteString(fmt.Sprintf("[%s]", status))
+
+	b.WriteString(" - ")
+	b.WriteString(t.Title)
+
+	return b.String()
+}
+
 func formatTicketLine(t *tickets.Ticket) string {
 	var b strings.Builder
 

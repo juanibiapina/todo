@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo link <id> <id> [id...]` — create bidirectional links between tickets (supports 3+ tickets, idempotent, validates all exist)
 - `todo unlink <id> <target-id>` — remove a bidirectional link between two tickets (idempotent, validates both exist)
 - `todo list` flags: `--status` (filter by status), `-a/--assignee` (filter by assignee), `-T/--tag` (filter by tag) — filters combine with AND logic
+- `todo ready` — show tickets ready to work on (open/in_progress with all deps closed or no deps), sorted by priority then ID, with `-a/--assignee` and `-T/--tag` filters
 
 ### Changed
 
