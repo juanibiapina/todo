@@ -337,6 +337,36 @@ todo closed -T backend
 | `--assignee` | `-a` | | Filter by assignee |
 | `--tag` | `-T` | | Filter by tag |
 
+### Add notes
+
+```bash
+# Add a note with positional argument
+todo add-note aBc 'Discussed with team, agreed on approach'
+
+# Add a note via stdin (for multi-line content)
+todo add-note aBc <<'EOF'
+Spoke with PM about requirements:
+- Need to support OAuth2
+- Deadline is next Friday
+EOF
+```
+
+Notes are appended to the ticket's description under a `## Notes` section. Each note is prefixed with a UTC timestamp in bold:
+
+```markdown
+## Notes
+
+**2026-02-18 10:30 UTC**
+
+Discussed with team, agreed on approach
+
+**2026-02-18 14:15 UTC**
+
+Follow-up: implementation started
+```
+
+The `## Notes` header is created automatically on the first note and reused for subsequent notes. Partial ID matching is supported.
+
 ### Manage links
 
 ```bash

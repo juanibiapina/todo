@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo closed` — show recently closed tickets sorted by file modification time (most recent first), with `--limit`/`-n` (default 20), `-a/--assignee`, and `-T/--tag` filters
 - `todo show` now displays computed relationship sections: Blockers (unclosed deps), Blocking (reverse deps), Children (sub-tickets), and Linked (resolved links). Sections only shown when non-empty.
 - `TODO_PAGER` environment variable: set to pipe `todo show` output through a pager (e.g. `less -R`). Only activates when stdout is a terminal.
+- `todo add-note <id> [text]` — append a timestamped note under a `## Notes` section in the ticket description. Supports positional argument or stdin for multi-line content.
 
 ### Changed
 
