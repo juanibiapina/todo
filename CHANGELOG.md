@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Partial ID matching: all commands accepting a ticket ID now support substring matching (exact match takes precedence; ambiguous matches produce an error)
 - `todo dep <id> <dep-id>` — add a dependency between tickets (idempotent, validates both exist)
 - `todo undep <id> <dep-id>` — remove a dependency between tickets (idempotent, validates both exist)
+- `todo dep tree <id>` — display dependency tree with box-drawing characters, `[status]` labels, cycle/dedup markers, and `--full` flag to disable deduplication
 
 ### Changed
 

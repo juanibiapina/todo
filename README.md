@@ -156,6 +156,22 @@ todo undep aBc xYz
 
 Both commands validate that the referenced tickets exist. Operations are idempotent — adding an existing dependency or removing a non-existent one succeeds silently. Partial ID matching is supported for both arguments.
 
+#### Dependency tree
+
+```bash
+# Show dependency tree
+todo dep tree aBc
+# aBc Fix login timeout
+# ├── xYz [in_progress] Refactor auth module
+# │   └── qRs Validate tokens
+# └── mNp Write tests
+
+# Show full tree (no deduplication)
+todo dep tree aBc --full
+```
+
+The tree uses box-drawing characters (`├── `, `└── `, `│   `) and shows `[status]` when set. Children are sorted by subtree depth (deepest first), then by ID. Cycles are marked with `(cycle)` and duplicate nodes with `(dup)`. Use `--full` to disable deduplication.
+
 ### Interactive TUI
 
 ```bash
