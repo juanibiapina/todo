@@ -554,9 +554,19 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.textInput.Focus()
 		return m, textinput.Blink
 
-	case "d":
+	case "d", "c":
 		if len(m.items) > 0 {
-			return m, m.deleteTicket(m.items[m.scroll.Cursor].ID)
+			return m, m.closeTicket(m.items[m.scroll.Cursor].ID)
+		}
+
+	case "s":
+		if len(m.items) > 0 {
+			return m, m.startTicket(m.items[m.scroll.Cursor].ID)
+		}
+
+	case "r":
+		if len(m.items) > 0 {
+			return m, m.reopenTicket(m.items[m.scroll.Cursor].ID)
 		}
 
 	case " ":
@@ -622,13 +632,33 @@ func (m Model) addTicket(title string) tea.Cmd {
 	}
 }
 
-func (m Model) deleteTicket(ref string) tea.Cmd {
+func (m Model) startTicket(id string) tea.Cmd {
 	return func() tea.Msg {
-		title, err := tickets.Done(m.dir, ref)
+		title, err := tickets.SetStatus(m.dir, id, "in_progress")
 		if err != nil {
 			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
 		}
-		return actionDoneMsg{message: fmt.Sprintf("Completed: %s", title)}
+		return actionDoneMsg{message: fmt.Sprintf("Started: %s", title)}
+	}
+}
+
+func (m Model) closeTicket(id string) tea.Cmd {
+	return func() tea.Msg {
+		title, err := tickets.SetStatus(m.dir, id, "closed")
+		if err != nil {
+			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
+		}
+		return actionDoneMsg{message: fmt.Sprintf("Closed: %s", title)}
+	}
+}
+
+func (m Model) reopenTicket(id string) tea.Cmd {
+	return func() tea.Msg {
+		title, err := tickets.SetStatus(m.dir, id, "open")
+		if err != nil {
+			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
+		}
+		return actionDoneMsg{message: fmt.Sprintf("Reopened: %s", title)}
 	}
 }
 
@@ -885,7 +915,9 @@ func (m Model) renderStatusBar() string {
 				m.renderKey("↑↓", "navigate"),
 				m.renderKey("1-4", "views"),
 				m.renderKey("a", "add"),
-				m.renderKey("d", "done"),
+				m.renderKey("s", "start"),
+				m.renderKey("c", "close"),
+				m.renderKey("r", "reopen"),
 				m.renderKey("space", "copy"),
 				m.renderKey("tab", "detail"),
 			)
@@ -1031,7 +1063,9 @@ func (m Model) renderHelpModal() string {
 		"  " + m.renderKey("↑/k ↓/j", "move cursor"),
 		"  " + m.renderKey("g/G", "first/last"),
 		"  " + m.renderKey("a", "add ticket"),
-		"  " + m.renderKey("d", "mark done (remove)"),
+		"  " + m.renderKey("s", "start (in_progress)"),
+		"  " + m.renderKey("c/d", "close"),
+		"  " + m.renderKey("r", "reopen"),
 		"  " + m.renderKey("space", "copy ticket to clipboard"),
 		"",
 		helpKeyStyle.Render("Detail Panel"),
