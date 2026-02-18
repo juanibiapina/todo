@@ -43,7 +43,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values (iteration 5)
 - [x] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors (iteration 6)
 - [x] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence (iteration 7)
-- [ ] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors
+- [x] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors (iteration 8)
 - [ ] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode
 - [ ] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests
 - [ ] Add link/unlink commands for bidirectional linking: `link <id> <id> [id...]` updates all involved files (idempotent), `unlink <id> <target-id>` removes from both. Add bats tests for bidirectional links, 3+ tickets, idempotency, and unlink
@@ -79,6 +79,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `findTicketFile()` uses substring matching (`strings.Contains`) not just prefix — allows prefix, suffix, and interior substring matches on ticket IDs
 - No signature change to `findTicketFile` means all callers (show, done, close, start, reopen, status, set-description, parent validation) automatically get partial ID support without any code changes
 - Ambiguous match error uses `sort.Strings(ids)` for deterministic, testable error messages
+- `AddDep()` and `RemoveDep()` resolve partial IDs via `findTicketFile` and store the full resolved ID in the deps array — ensures consistent references even when users provide partial IDs
+- Both `AddDep` and `RemoveDep` are idempotent — `AddDep` checks existing deps before appending, `RemoveDep` filters without erroring if dep not present
+- Both ticket and dependency ticket must exist (validated via `findTicketFile`) before any modification — prevents dangling references in the deps array
 
 ## History
 
@@ -96,6 +99,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 8: Dep/undep commands for dependency management
+- **Branch**: ralph/dep-undep-commands
+- **PR**: #9 (merged)
+- **Summary**: Added `AddDep(dir, id, depID string)` and `RemoveDep(dir, id, depID string)` to `internal/tickets/file.go` — both validate both IDs exist via `findTicketFile`, store full resolved IDs, and are idempotent. Created `cmd/dep.go` and `cmd/undep.go` cobra commands with `ExactArgs(2)`. Added 7 unit tests (`TestAddDep`, `TestAddDepIdempotent`, `TestAddDepTicketNotFound`, `TestAddDepDepNotFound`, `TestRemoveDep`, `TestRemoveDepNotPresent`, `TestRemoveDepTicketNotFound`). Created `test/dep.bats` (8 tests) and `test/undep.bats` (5 tests). Updated README.md and CHANGELOG.md. All 50 unit tests and 93 bats tests pass.
 
 ### Iteration 7: Partial ID matching
 - **Branch**: ralph/partial-id-matching
