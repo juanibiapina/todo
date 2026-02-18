@@ -51,7 +51,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Add ready command: show open/in_progress tickets with all deps closed or no deps, sorted by priority then ID, format `id [P2][open] - Title`, support assignee/tag filters. Add bats tests (iteration 13)
 - [x] Add blocked command: show open/in_progress tickets with unclosed deps, show only unclosed blockers in output, support assignee/tag filters. Add bats tests (iteration 14)
 - [x] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests (iteration 15)
-- [ ] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section
+- [x] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section (iteration 16)
 - [ ] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests
 - [ ] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests
 - [ ] Add query command: output all tickets as JSONL with all frontmatter fields, support `--status`, `--type`, `--assignee`, `--tag` filters. Go-native implementation. Add bats tests for JSONL validity, field presence, filtering, and empty output
@@ -103,6 +103,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `closed` command uses file mtime via `os.Stat()` in the command layer for sorting — constructs path as `tickets.DirPath(dir)/<id>.md`, skips tickets where stat fails
 - Output format for `closed` omits `[closed]` status bracket since all displayed tickets are closed — simpler format `id - Title` via `formatClosedLine()`, unlike `formatReadyLine()`/`formatBlockedLine()` which always show status
 - `--limit` flag uses `-n` shorthand (matching common CLI conventions like `head -n`); sort-then-truncate ensures most recently closed tickets appear first
+- Relations logic placed in `internal/tickets/relations.go` for testability — `ComputeRelations()` takes a ticket and all tickets, returns `TicketRelations` struct with resolved Blockers, Blocking, Children, Linked, and ParentTicket
+- Parent line enhanced via `strings.Replace` on existing `FullString()` output rather than modifying `FullString()` itself — keeps data layer formatting unchanged while enriching the display
+- Pager support uses `TODO_PAGER` env var (not `PAGER`) with TTY detection via `golang.org/x/term.IsTerminal` — only pipes through pager when stdout is a terminal; falls back to direct stdout if pager fails to start
 
 ## History
 
@@ -120,6 +123,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 16: Show command with computed relationships and pager support
+- **Branch**: ralph/show-relations-and-pager
+- **PR**: #17 (merged)
+- **Summary**: Created `internal/tickets/relations.go` with `TicketRelations` struct, `ComputeRelations()`, `FormatRelations()`, `FormatParentLine()`, and `formatRelationLine()`. Blockers = unclosed deps only; Blocking = reverse deps when ticket is unclosed; Children = tickets with matching parent; Linked = resolved links. Missing dep/link IDs silently skipped. Created `internal/tickets/relations_test.go` with 15 unit tests. Rewrote `cmd/show.go` to load all tickets, compute relations, enhance parent line with title via `strings.Replace`, append formatted relation sections, and support `TODO_PAGER` env var with TTY detection (`golang.org/x/term`). Added 10 bats tests to `test/show.bats`. Fixed `test/dep.bats` and `test/link.bats` idempotent tests (frontmatter-only ID counting via `sed`). Promoted `golang.org/x/term` to direct dependency. All 88 unit tests and 182 bats tests pass.
 
 ### Iteration 15: Closed command for recently closed tickets
 - **Branch**: ralph/closed-command
