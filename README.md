@@ -254,6 +254,35 @@ todo ready -T urgent
 | `--assignee` | `-a` | Filter by assignee |
 | `--tag` | `-T` | Filter by tag |
 
+### Blocked tickets
+
+```bash
+todo blocked
+# aBc [P1][open] - Critical bug fix <- [xYz]
+# mNp [P2][in_progress] - Refactor auth module <- [qRs, jKl]
+```
+
+Shows tickets that are blocked: open or in-progress tickets with at least one unclosed dependency. Only the unclosed blockers are shown in the output. Missing deps (not found in the ticket list) are treated as non-blocking.
+
+Output format: `id [P<priority>][status] - Title <- [blocker1, blocker2]`. Priority is always shown. Empty status is displayed as `[open]`. Tickets are sorted by priority ascending (lower number = higher priority), then by ID.
+
+Filter by assignee or tag:
+
+```bash
+# Filter by assignee
+todo blocked -a Alice
+
+# Filter by tag
+todo blocked -T urgent
+```
+
+**Flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--assignee` | `-a` | Filter by assignee |
+| `--tag` | `-T` | Filter by tag |
+
 ### Manage links
 
 ```bash
