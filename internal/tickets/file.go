@@ -301,6 +301,76 @@ func SetStatus(dir string, id string, status string) (string, error) {
 	return t.Title, nil
 }
 
+// AddDep adds a dependency from one ticket to another.
+// Both tickets must exist. The operation is idempotent.
+func AddDep(dir string, id string, depID string) error {
+	// Resolve and validate the ticket
+	path, err := findTicketFile(dir, id)
+	if err != nil {
+		return err
+	}
+
+	// Resolve and validate the dependency ticket
+	depPath, err := findTicketFile(dir, depID)
+	if err != nil {
+		return err
+	}
+
+	t, err := parseFile(path)
+	if err != nil {
+		return err
+	}
+
+	// Extract the resolved (full) dep ID from the path
+	resolvedDepID := strings.TrimSuffix(filepath.Base(depPath), ".md")
+
+	// Check if already present (idempotent)
+	for _, d := range t.Deps {
+		if d == resolvedDepID {
+			return nil
+		}
+	}
+
+	t.Deps = append(t.Deps, resolvedDepID)
+
+	return writeFile(dir, t)
+}
+
+// RemoveDep removes a dependency from a ticket.
+// Both tickets must exist. The operation is idempotent.
+func RemoveDep(dir string, id string, depID string) error {
+	// Resolve and validate the ticket
+	path, err := findTicketFile(dir, id)
+	if err != nil {
+		return err
+	}
+
+	// Resolve and validate the dependency ticket
+	depPath, err := findTicketFile(dir, depID)
+	if err != nil {
+		return err
+	}
+
+	t, err := parseFile(path)
+	if err != nil {
+		return err
+	}
+
+	// Extract the resolved (full) dep ID from the path
+	resolvedDepID := strings.TrimSuffix(filepath.Base(depPath), ".md")
+
+	// Remove if present (idempotent — no error if not found)
+	var newDeps []string
+	for _, d := range t.Deps {
+		if d != resolvedDepID {
+			newDeps = append(newDeps, d)
+		}
+	}
+	t.Deps = newDeps
+
+	return writeFile(dir, t)
+}
+
 // SetDescription sets or replaces a ticket's description.
 func SetDescription(dir string, id string, description string) (string, error) {
 	path, err := findTicketFile(dir, id)
