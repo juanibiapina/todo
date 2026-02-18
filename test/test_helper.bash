@@ -21,7 +21,7 @@ setup() {
 ticket_count() {
   local output
   output="$(todo list)"
-  if [[ "${output}" == "No tickets" ]]; then
+  if [[ -z "${output}" ]]; then
     echo 0
   else
     echo "${output}" | wc -l | tr -d ' '

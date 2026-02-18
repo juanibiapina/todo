@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo dep cycle` — DFS-based cycle detection on open (non-closed) tickets, outputs normalized cycles with member details
 - `todo link <id> <id> [id...]` — create bidirectional links between tickets (supports 3+ tickets, idempotent, validates all exist)
 - `todo unlink <id> <target-id>` — remove a bidirectional link between two tickets (idempotent, validates both exist)
+- `todo list` flags: `--status` (filter by status), `-a/--assignee` (filter by assignee), `-T/--tag` (filter by tag) — filters combine with AND logic
 
 ### Changed
 
@@ -34,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File format uses YAML frontmatter (`---` delimited) followed by `# Title` heading and description
   - Enables better git diffs and easier manual editing
 - `todo done` now sets `status: closed` instead of deleting the ticket file. Closed tickets are preserved on disk but hidden from `list` and TUI.
+- `todo list` output format now shows `id [status] - Title <- [dep1, dep2]` (status and deps omitted when empty)
+- Empty `todo list` result now produces no output instead of "No tickets" message
 - All commands now reference tickets by ID only, not by title
   - Affects: `show`, `done`, `set-description`
   - Title fallback removed from internal lookup functions
