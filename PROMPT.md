@@ -45,7 +45,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence (iteration 7)
 - [x] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors (iteration 8)
 - [x] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode (iteration 9)
-- [ ] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests
+- [x] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests (iteration 10)
 - [ ] Add link/unlink commands for bidirectional linking: `link <id> <id> [id...]` updates all involved files (idempotent), `unlink <id> <target-id>` removes from both. Add bats tests for bidirectional links, 3+ tickets, idempotency, and unlink
 - [ ] Enhance list command with `--status`, `-a/--assignee`, `-T/--tag` filters. Show deps in output: `id [status] - Title <- [dep1, dep2]`. Empty list returns nothing instead of "No tickets". Add bats tests for all filter combinations
 - [ ] Add ready command: show open/in_progress tickets with all deps closed or no deps, sorted by priority then ID, format `id [P2][open] - Title`, support assignee/tag filters. Add bats tests
@@ -85,6 +85,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - Cobra routes subcommands before parent `Args` validation — `dep tree <id>` works alongside `dep <id> <dep-id>` without changing the parent command's `ExactArgs(2)`
 - Separate maps for cycle detection (ancestors — tracks current path, cleaned up via defer) vs dedup (visited — tracks all expanded nodes) — `--full` disables dedup only, not cycle detection, preventing infinite recursion
 - Children sorted by subtree depth descending then ID ascending — deeper branches appear first for visual clarity; `subtreeDepth()` recursion uses the same ticketMap for consistency
+- 3-color DFS (white/gray/black) is the standard directed-graph cycle detection algorithm — gray nodes on the current path indicate back-edges (cycles); path extraction via `extractCycle()` walks the stack from the gray node
+- Cycle normalization via rotation (smallest ID first) + deduplication via `strings.Join(normalized, ",")` as map key ensures deterministic, unique cycle output regardless of DFS traversal order
+- Closed tickets excluded at graph-building time — `ticketMap` only contains non-closed tickets, deps pointing to closed or non-existent tickets are skipped during DFS adjacency traversal
 
 ## History
 
@@ -102,6 +105,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 10: Dep cycle command for DFS-based cycle detection
+- **Branch**: ralph/dep-cycle-command
+- **PR**: #11 (merged)
+- **Summary**: Created `internal/tickets/cycle.go` with `DepCycles()` public API, `findCycles()` using 3-color DFS (white/gray/black), `extractCycle()`, `normalizeCycle()` (rotate so smallest ID first), `deduplicateCycles()` (string-join map key), `formatCycles()`/`formatCycleMember()`. Created `cmd/dep_cycle.go` as cobra subcommand `cycle` under `depCmd` with `cobra.NoArgs`. Only prints when cycles found. Closed tickets excluded from adjacency graph. Added 8 unit tests in `cycle_test.go` (NoCycles, Simple, ThreeNode, Multiple, ClosedExcluded, Normalized, NoDeps, WithStatus) and 7 integration tests in `test/dep_cycle.bats`. Updated README.md and CHANGELOG.md. All 66 unit tests and 109 bats tests pass.
 
 ### Iteration 9: Dep tree command with box-drawing output
 - **Branch**: ralph/dep-tree-command
