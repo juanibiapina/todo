@@ -225,6 +225,35 @@ Cycle: aBc -> xYz -> aBc
 
 Closed tickets are excluded from the analysis. If no cycles are found, the command produces no output.
 
+### Ready tickets
+
+```bash
+todo ready
+# aBc [P1][open] - Critical bug fix
+# xYz [P2][in_progress] - Refactor auth module
+```
+
+Shows tickets that are ready to work on: open or in-progress tickets where all dependencies are closed (or have no dependencies). Missing deps are treated as non-blocking.
+
+Output format: `id [P<priority>][status] - Title`. Priority is always shown. Empty status is displayed as `[open]`. Tickets are sorted by priority ascending (lower number = higher priority), then by ID.
+
+Filter by assignee or tag:
+
+```bash
+# Filter by assignee
+todo ready -a Alice
+
+# Filter by tag
+todo ready -T urgent
+```
+
+**Flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--assignee` | `-a` | Filter by assignee |
+| `--tag` | `-T` | Filter by tag |
+
 ### Manage links
 
 ```bash
