@@ -59,6 +59,16 @@ func formatBlockedLine(t *tickets.Ticket, unclosedBlockers []string) string {
 	return b.String()
 }
 
+func formatClosedLine(t *tickets.Ticket) string {
+	var b strings.Builder
+
+	b.WriteString(cliID(t.ID))
+	b.WriteString(" - ")
+	b.WriteString(t.Title)
+
+	return b.String()
+}
+
 func formatTicketLine(t *tickets.Ticket) string {
 	var b strings.Builder
 

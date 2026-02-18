@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo list` flags: `--status` (filter by status), `-a/--assignee` (filter by assignee), `-T/--tag` (filter by tag) — filters combine with AND logic
 - `todo ready` — show tickets ready to work on (open/in_progress with all deps closed or no deps), sorted by priority then ID, with `-a/--assignee` and `-T/--tag` filters
 - `todo blocked` — show tickets blocked by unclosed dependencies (open/in_progress with ≥1 unclosed dep), sorted by priority then ID, with `-a/--assignee` and `-T/--tag` filters
+- `todo closed` — show recently closed tickets sorted by file modification time (most recent first), with `--limit`/`-n` (default 20), `-a/--assignee`, and `-T/--tag` filters
 
 ### Changed
 
