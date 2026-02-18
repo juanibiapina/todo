@@ -55,4 +55,9 @@ var (
 	selectedBgStyle     = lipgloss.NewStyle().Background(selectionBg)
 	ticketIDSelStyle    = lipgloss.NewStyle().Foreground(colorMagenta).Background(selectionBg)
 	ticketTitleSelStyle = lipgloss.NewStyle().Background(selectionBg)
+
+	// Detail panel — metadata
+	metaLabelStyle      = lipgloss.NewStyle().Foreground(mutedColor)
+	metaValueStyle      = lipgloss.NewStyle().Foreground(fgColor)
+	sectionHeadingStyle = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
 )

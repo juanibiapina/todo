@@ -195,14 +195,106 @@ func (m *Model) updateDetailContent() {
 	b.WriteString(titleStyle.Render(t.Title))
 	b.WriteString("\n\n")
 
-	// Metadata
-	b.WriteString(mutedStyle.Render("ID: "))
+	// ID
+	b.WriteString(metaLabelStyle.Render("ID: "))
 	b.WriteString(ticketIDStyle.Render(t.ID))
 	b.WriteString("\n")
 
+	// Status — always shown, default to "open"
+	status := t.Status
+	if status == "" {
+		status = "open"
+	}
+	b.WriteString(metaLabelStyle.Render("Status: "))
+	b.WriteString(metaValueStyle.Render(status))
+	b.WriteString("\n")
+
+	// Type
+	if t.Type != "" {
+		b.WriteString(metaLabelStyle.Render("Type: "))
+		b.WriteString(metaValueStyle.Render(t.Type))
+		b.WriteString("\n")
+	}
+
+	// Priority — always shown as P<n>
+	b.WriteString(metaLabelStyle.Render("Priority: "))
+	b.WriteString(metaValueStyle.Render(fmt.Sprintf("P%d", t.Priority)))
+	b.WriteString("\n")
+
+	// Assignee
+	if t.Assignee != "" {
+		b.WriteString(metaLabelStyle.Render("Assignee: "))
+		b.WriteString(metaValueStyle.Render(t.Assignee))
+		b.WriteString("\n")
+	}
+
+	// Created
+	if t.Created != "" {
+		b.WriteString(metaLabelStyle.Render("Created: "))
+		b.WriteString(metaValueStyle.Render(t.Created))
+		b.WriteString("\n")
+	}
+
+	// Parent
+	if t.Parent != "" {
+		b.WriteString(metaLabelStyle.Render("Parent: "))
+		b.WriteString(metaValueStyle.Render(t.Parent))
+		b.WriteString("\n")
+	}
+
+	// ExternalRef
+	if t.ExternalRef != "" {
+		b.WriteString(metaLabelStyle.Render("Ref: "))
+		b.WriteString(metaValueStyle.Render(t.ExternalRef))
+		b.WriteString("\n")
+	}
+
+	// Tags
+	if len(t.Tags) > 0 {
+		b.WriteString(metaLabelStyle.Render("Tags: "))
+		b.WriteString(metaValueStyle.Render(strings.Join(t.Tags, ", ")))
+		b.WriteString("\n")
+	}
+
+	// Deps
+	if len(t.Deps) > 0 {
+		b.WriteString(metaLabelStyle.Render("Deps: "))
+		b.WriteString(metaValueStyle.Render(strings.Join(t.Deps, ", ")))
+		b.WriteString("\n")
+	}
+
+	// Links
+	if len(t.Links) > 0 {
+		b.WriteString(metaLabelStyle.Render("Links: "))
+		b.WriteString(metaValueStyle.Render(strings.Join(t.Links, ", ")))
+		b.WriteString("\n")
+	}
+
+	descWidth := m.detailView.Width
+
+	// Design section
+	if t.Design != "" {
+		b.WriteString("\n")
+		b.WriteString(sectionHeadingStyle.Render("Design"))
+		b.WriteString("\n")
+		b.WriteString(m.renderMarkdown(t.Design, descWidth))
+		b.WriteString("\n")
+	}
+
+	// Acceptance section
+	if t.Acceptance != "" {
+		b.WriteString("\n")
+		b.WriteString(sectionHeadingStyle.Render("Acceptance"))
+		b.WriteString("\n")
+		b.WriteString(m.renderMarkdown(t.Acceptance, descWidth))
+		b.WriteString("\n")
+	}
+
+	// Description section
 	if t.Description != "" {
 		b.WriteString("\n")
-		descWidth := m.detailView.Width
+		b.WriteString(sectionHeadingStyle.Render("Description"))
+		b.WriteString("\n")
 
 		// Use cached render if ticket/description/width haven't changed
 		if t.ID == m.cachedDetailID && t.Description == m.cachedDetailDesc && descWidth == m.cachedDetailWidth {
