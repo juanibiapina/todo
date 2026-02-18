@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TODO_PAGER` environment variable: set to pipe `todo show` output through a pager (e.g. `less -R`). Only activates when stdout is a terminal.
 - `todo add-note <id> [text]` — append a timestamped note under a `## Notes` section in the ticket description. Supports positional argument or stdin for multi-line content.
 - `todo edit <id>` — open a ticket file in `$EDITOR` (default `vi`). Prints the file path instead when stdout is not a terminal.
+- `todo query` — output all tickets as JSONL (one JSON object per line) with all frontmatter fields. Supports `--status`, `--type`, `-a/--assignee`, `-T/--tag` filters with AND logic.
 
 ### Changed
 

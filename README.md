@@ -353,6 +353,57 @@ todo closed -T backend
 | `--assignee` | `-a` | | Filter by assignee |
 | `--tag` | `-T` | | Filter by tag |
 
+### Query tickets (JSONL)
+
+```bash
+todo query
+# {"id":"aBc","title":"Fix login timeout","priority":2,"deps":[],"links":[],"tags":[]}
+# {"id":"xYz","title":"Refactor auth","status":"in_progress","type":"bug","priority":1,"assignee":"Alice","deps":["aBc"],"links":[],"tags":["auth","urgent"]}
+```
+
+Outputs all tickets as JSON Lines (one JSON object per line) with all frontmatter fields. Useful for scripting, external tooling, and data analysis with `jq`:
+
+```bash
+# Count open tickets
+todo query --status open | wc -l
+
+# Get all high-priority tickets
+todo query | jq -r 'select(.priority <= 1) | .title'
+
+# Export to a file
+todo query > tickets.jsonl
+```
+
+Fields `id`, `title`, and `priority` are always present. String fields are omitted when empty. Array fields (`deps`, `links`, `tags`) are always present as arrays (never `null`).
+
+Filter by status, type, assignee, or tag:
+
+```bash
+# Filter by status
+todo query --status open
+
+# Filter by type
+todo query --type bug
+
+# Filter by assignee
+todo query -a Alice
+
+# Filter by tag
+todo query -T urgent
+
+# Combine filters (AND logic)
+todo query --status open --type bug -a Alice
+```
+
+**Flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--status` | | Filter by status: `open`, `in_progress`, `closed` |
+| `--type` | | Filter by type: `bug`, `feature`, `task`, `epic`, `chore` |
+| `--assignee` | `-a` | Filter by assignee |
+| `--tag` | `-T` | Filter by tag |
+
 ### Add notes
 
 ```bash
