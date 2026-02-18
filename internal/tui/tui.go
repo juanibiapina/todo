@@ -2,6 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -32,6 +35,16 @@ const (
 	modalHelp
 )
 
+// View mode
+type viewMode int
+
+const (
+	viewAll viewMode = iota
+	viewReady
+	viewBlocked
+	viewClosed
+)
+
 // tickMsg refreshes ticket data from disk
 type tickMsg time.Time
 
@@ -41,6 +54,7 @@ type Model struct {
 	items      []*tickets.Ticket
 	allTickets []*tickets.Ticket
 	scroll     ScrollState
+	view       viewMode
 
 	activePanel panel
 	modal       modalMode
@@ -86,19 +100,11 @@ func tickCmd() tea.Cmd {
 func (m Model) loadTickets() tea.Cmd {
 	return func() tea.Msg {
 		allItems, _ := tickets.List(m.dir)
-		// Filter out closed tickets
-		var items []*tickets.Ticket
-		for _, t := range allItems {
-			if t.Status != "closed" {
-				items = append(items, t)
-			}
-		}
-		return ticketsLoadedMsg{items: items, allTickets: allItems}
+		return ticketsLoadedMsg{allTickets: allItems}
 	}
 }
 
 type ticketsLoadedMsg struct {
-	items      []*tickets.Ticket
 	allTickets []*tickets.Ticket
 }
 
@@ -141,9 +147,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.loadTickets(), tickCmd())
 
 	case ticketsLoadedMsg:
-		m.items = msg.items
 		m.allTickets = msg.allTickets
-		m.scroll.ClampToCount(len(m.items))
+		m.applyView()
 		m.updateDetailContent()
 
 	case actionDoneMsg:
@@ -164,6 +169,124 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *Model) applyView() {
+	switch m.view {
+	case viewReady:
+		m.items = m.filterReady()
+	case viewBlocked:
+		m.items = m.filterBlocked()
+	case viewClosed:
+		m.items = m.filterClosed()
+	default: // viewAll — open/in_progress (not closed)
+		var items []*tickets.Ticket
+		for _, t := range m.allTickets {
+			if t.Status != "closed" {
+				items = append(items, t)
+			}
+		}
+		m.items = items
+	}
+	m.scroll.ClampToCount(len(m.items))
+}
+
+func (m *Model) filterReady() []*tickets.Ticket {
+	statusMap := make(map[string]string)
+	for _, t := range m.allTickets {
+		statusMap[t.ID] = t.Status
+	}
+
+	var ready []*tickets.Ticket
+	for _, t := range m.allTickets {
+		if t.Status == "closed" {
+			continue
+		}
+		allDepsDone := true
+		for _, depID := range t.Deps {
+			depStatus, exists := statusMap[depID]
+			if exists && depStatus != "closed" {
+				allDepsDone = false
+				break
+			}
+		}
+		if !allDepsDone {
+			continue
+		}
+		ready = append(ready, t)
+	}
+
+	sort.Slice(ready, func(i, j int) bool {
+		if ready[i].Priority != ready[j].Priority {
+			return ready[i].Priority < ready[j].Priority
+		}
+		return ready[i].ID < ready[j].ID
+	})
+	return ready
+}
+
+func (m *Model) filterBlocked() []*tickets.Ticket {
+	statusMap := make(map[string]string)
+	for _, t := range m.allTickets {
+		statusMap[t.ID] = t.Status
+	}
+
+	var blocked []*tickets.Ticket
+	for _, t := range m.allTickets {
+		if t.Status == "closed" {
+			continue
+		}
+		hasUnclosed := false
+		for _, depID := range t.Deps {
+			depStatus, exists := statusMap[depID]
+			if exists && depStatus != "closed" {
+				hasUnclosed = true
+				break
+			}
+		}
+		if !hasUnclosed {
+			continue
+		}
+		blocked = append(blocked, t)
+	}
+
+	sort.Slice(blocked, func(i, j int) bool {
+		if blocked[i].Priority != blocked[j].Priority {
+			return blocked[i].Priority < blocked[j].Priority
+		}
+		return blocked[i].ID < blocked[j].ID
+	})
+	return blocked
+}
+
+func (m *Model) filterClosed() []*tickets.Ticket {
+	type closedTicket struct {
+		ticket *tickets.Ticket
+		mtime  int64
+	}
+
+	var closed []closedTicket
+	for _, t := range m.allTickets {
+		if t.Status != "closed" {
+			continue
+		}
+		path := filepath.Join(tickets.DirPath(m.dir), t.ID+".md")
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		closed = append(closed, closedTicket{ticket: t, mtime: info.ModTime().UnixNano()})
+	}
+
+	sort.Slice(closed, func(i, j int) bool {
+		return closed[i].mtime > closed[j].mtime
+	})
+
+	items := make([]*tickets.Ticket, len(closed))
+	for i, ct := range closed {
+		items[i] = ct.ticket
+	}
+	return items
 }
 
 func (m *Model) renderMarkdown(text string, width int) string {
@@ -440,6 +563,27 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.items) > 0 {
 			return m, m.copyTicket(m.items[m.scroll.Cursor])
 		}
+
+	case "1":
+		m.view = viewAll
+		m.applyView()
+		m.scroll.Reset()
+		m.updateDetailContent()
+	case "2":
+		m.view = viewReady
+		m.applyView()
+		m.scroll.Reset()
+		m.updateDetailContent()
+	case "3":
+		m.view = viewBlocked
+		m.applyView()
+		m.scroll.Reset()
+		m.updateDetailContent()
+	case "4":
+		m.view = viewClosed
+		m.applyView()
+		m.scroll.Reset()
+		m.updateDetailContent()
 	}
 
 	return m, nil
@@ -541,8 +685,19 @@ func (m Model) renderPanels() string {
 	}
 
 	// Left: list panel
+	var listTitle string
+	switch m.view {
+	case viewReady:
+		listTitle = "Tickets [Ready]"
+	case viewBlocked:
+		listTitle = "Tickets [Blocked]"
+	case viewClosed:
+		listTitle = "Tickets [Closed]"
+	default:
+		listTitle = "Tickets [All]"
+	}
 	listContent := m.renderTicketList(leftW - 4)
-	listPanel := m.renderPanel(1, "Tickets", listContent, leftW, totalH, m.activePanel == panelList)
+	listPanel := m.renderPanel(1, listTitle, listContent, leftW, totalH, m.activePanel == panelList)
 
 	// Right: detail panel
 	detailTitle := "Details"
@@ -728,6 +883,7 @@ func (m Model) renderStatusBar() string {
 		case panelList:
 			parts = append(parts,
 				m.renderKey("↑↓", "navigate"),
+				m.renderKey("1-4", "views"),
 				m.renderKey("a", "add"),
 				m.renderKey("d", "done"),
 				m.renderKey("space", "copy"),
