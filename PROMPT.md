@@ -50,7 +50,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Enhance list command with `--status`, `-a/--assignee`, `-T/--tag` filters. Show deps in output: `id [status] - Title <- [dep1, dep2]`. Empty list returns nothing instead of "No tickets". Add bats tests for all filter combinations (iteration 12)
 - [x] Add ready command: show open/in_progress tickets with all deps closed or no deps, sorted by priority then ID, format `id [P2][open] - Title`, support assignee/tag filters. Add bats tests (iteration 13)
 - [x] Add blocked command: show open/in_progress tickets with unclosed deps, show only unclosed blockers in output, support assignee/tag filters. Add bats tests (iteration 14)
-- [ ] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests
+- [x] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests (iteration 15)
 - [ ] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section
 - [ ] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests
 - [ ] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests
@@ -100,6 +100,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `blocked` command is the inverse of `ready` — same filtering/sorting logic but selects tickets with ≥1 unclosed dep instead of all deps closed; `formatBlockedLine()` takes pre-computed unclosed blockers list to avoid re-computing in the formatter
 - Bats test assertion `refute_output --partial "${id}"` can false-match when the ID appears in another ticket's deps suffix (`<- [id]`) — safer to assert exact line count or use `refute_line` for such cases
 - `blocked` and `ready` commands share the same architectural pattern: no library-level changes, all logic in `cmd/*.go` reusing `tickets.List()` with in-command statusMap construction, filtering, and sorting
+- `closed` command uses file mtime via `os.Stat()` in the command layer for sorting — constructs path as `tickets.DirPath(dir)/<id>.md`, skips tickets where stat fails
+- Output format for `closed` omits `[closed]` status bracket since all displayed tickets are closed — simpler format `id - Title` via `formatClosedLine()`, unlike `formatReadyLine()`/`formatBlockedLine()` which always show status
+- `--limit` flag uses `-n` shorthand (matching common CLI conventions like `head -n`); sort-then-truncate ensures most recently closed tickets appear first
 
 ## History
 
@@ -117,6 +120,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 15: Closed command for recently closed tickets
+- **Branch**: ralph/closed-command
+- **PR**: #16 (merged)
+- **Summary**: Created `cmd/closed.go` with `cobra.NoArgs` — loads all tickets via `tickets.List()`, filters to `Status == "closed"`, stats files via `os.Stat()` for mtime, sorts descending (most recent first), truncates by `--limit/-n` (default 20). Supports `-a/--assignee` and `-T/--tag` flags. Added `formatClosedLine()` to `cmd/format.go` with simple `id - Title` format (no status bracket). Created `test/closed.bats` with 11 integration tests covering empty list, closed-only filtering, mtime sorting (using `touch -t`), limit flag, `-n` shorthand, assignee/tag filters, output format, and combined filters. Updated README.md and CHANGELOG.md. All 73 unit tests and 172 bats tests pass.
 
 ### Iteration 14: Blocked command for tickets with unclosed dependencies
 - **Branch**: ralph/blocked-command
