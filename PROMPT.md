@@ -40,7 +40,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Keep 3-char random base62 ID generation (current format). No changes needed to id.go. Verify existing unit tests cover ID uniqueness and format (iteration 2)
 - [x] Change file naming from `<id>-<slug>.md` to `<id>.md`. Remove slugify(), update ticketFileName/ticketFilePath, update findTicketFile for exact match, update parseFile/writeFile for YAML-first frontmatter format. Update file_test.go unit tests (iteration 3)
 - [x] Update all commands (add, done, show, list, set-description, format) to work with the new file format, naming, and ID generation. Update all existing bats tests to match new output format, ID patterns, and done behavior (status=closed instead of delete) (iteration 4)
-- [ ] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values
+- [x] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values (iteration 5)
 - [ ] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors
 - [ ] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence
 - [ ] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors
@@ -69,6 +69,10 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `Done()` sets `t.Status = "closed"` then calls `writeFile()` — preserves ticket data on disk instead of deleting
 - `List()` remains a pure data function returning all tickets (including closed); filtering happens in `cmd/list.go` and `internal/tui/tui.go` — keeps the data layer flexible for future `--status` filtering and `closed` command
 - Most commands (add, show, set-description, format) needed no changes for step 4 — they already worked with the new YAML frontmatter format from iterations 1-3
+- Refactored `Add()` to accept `*Ticket` struct instead of individual parameters — cleaner API that avoids parameter explosion as fields grow
+- Parent validation done in `Add()` data layer (not cobra command) — ensures consistency regardless of entry point (CLI, TUI, tests)
+- Description priority order: `-d` flag > positional arg > stdin — most explicit input wins
+- Default assignee uses `git config user.name`; detected via `cmd.Flags().Changed("assignee")` to only apply when flag not explicitly set
 
 ## History
 
@@ -86,6 +90,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 5: Add command creation flags
+- **Branch**: ralph/add-command-flags
+- **PR**: #6 (merged)
+- **Summary**: Added `Design` and `Acceptance` fields to `Ticket` and `frontmatter` structs. Refactored `Add(dir, title, description)` to `Add(dir string, t *Ticket)` for cleaner API. Added parent validation in `Add()` using `findTicketFile()`. Added 9 cobra flags to `cmd/add.go` (`-d/--description`, `-t/--type`, `-p/--priority`, `-a/--assignee`, `--external-ref`, `--parent`, `--design`, `--acceptance`, `--tags`). Default title "Untitled", default type "task", default priority 2, default assignee from `git config user.name`. Description priority: `-d` flag > positional arg > stdin. Updated callers in `cmd/quick_add.go` and `internal/tui/tui.go`. Added 21 new bats tests (51 total). Updated README.md flags table and CHANGELOG.md. All 34 unit tests and 51 bats tests pass.
 
 ### Iteration 4: Done sets status=closed and command/test updates
 - **Branch**: ralph/done-sets-status-closed
