@@ -47,7 +47,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode (iteration 9)
 - [x] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests (iteration 10)
 - [x] Add link/unlink commands for bidirectional linking: `link <id> <id> [id...]` updates all involved files (idempotent), `unlink <id> <target-id>` removes from both. Add bats tests for bidirectional links, 3+ tickets, idempotency, and unlink (iteration 11)
-- [ ] Enhance list command with `--status`, `-a/--assignee`, `-T/--tag` filters. Show deps in output: `id [status] - Title <- [dep1, dep2]`. Empty list returns nothing instead of "No tickets". Add bats tests for all filter combinations
+- [x] Enhance list command with `--status`, `-a/--assignee`, `-T/--tag` filters. Show deps in output: `id [status] - Title <- [dep1, dep2]`. Empty list returns nothing instead of "No tickets". Add bats tests for all filter combinations (iteration 12)
 - [ ] Add ready command: show open/in_progress tickets with all deps closed or no deps, sorted by priority then ID, format `id [P2][open] - Title`, support assignee/tag filters. Add bats tests
 - [ ] Add blocked command: show open/in_progress tickets with unclosed deps, show only unclosed blockers in output, support assignee/tag filters. Add bats tests
 - [ ] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests
@@ -91,6 +91,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `AddLink` accepts `[]string` of IDs for 3+ ticket linking, creating all pairs in one call — differs from `AddDep` which is directional and takes exactly 2 IDs
 - Both `link` and `unlink` are bidirectional — they update all involved ticket files (both sides), unlike `dep`/`undep` which only modify the source ticket
 - `link` command uses `cobra.MinimumNArgs(2)` to support 3+ tickets; `unlink` uses `ExactArgs(2)` for simpler pairwise semantics
+- `--status open` must match both `Status == ""` and `Status == "open"` since newly created tickets have empty status — special-case equality check needed
+- `formatTicketLine()` uses `strings.Builder` for constructing output with optional status brackets and deps suffix — status/deps portions omitted entirely when empty, not shown as empty brackets
+- Removing "No tickets" message required updating `ticket_count()` helper in `test/test_helper.bash` to check `[[ -z "${output}" ]]` instead of matching the string
 
 ## History
 
@@ -108,6 +111,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 12: List command filters and improved output format
+- **Branch**: ralph/list-filters-and-format
+- **PR**: #13 (merged)
+- **Summary**: Rewrote `formatTicketLine()` in `cmd/format.go` using `strings.Builder` for new output format `id [status] - Title <- [dep1, dep2]` (status/deps omitted when empty). Added `--status`, `-a/--assignee`, `-T/--tag` filter flags to `cmd/list.go` with AND-combined logic. `--status open` matches both empty and `"open"` statuses. Removed "No tickets" message — empty results produce no output. Updated `ticket_count()` helper in `test/test_helper.bash`. Rewrote `test/list.bats` from 4 to 20 tests covering output format, all filters, and combinations. Updated README.md and CHANGELOG.md. All 73 unit tests and 139 bats tests pass.
 
 ### Iteration 11: Link/unlink commands for bidirectional ticket linking
 - **Branch**: ralph/link-unlink-commands
