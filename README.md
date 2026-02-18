@@ -113,6 +113,22 @@ todo done aBc
 
 This sets the ticket's status to `closed`. The ticket file is preserved on disk but hidden from `list` and the TUI. Use `show` to view closed tickets.
 
+### Manage ticket status
+
+Valid statuses: `open`, `in_progress`, `closed`.
+
+```bash
+# Set status directly
+todo status aBc in_progress
+
+# Shortcut commands
+todo start aBc      # set status to in_progress
+todo close aBc      # set status to closed
+todo reopen aBc     # set status to open
+```
+
+Closed tickets are hidden from `list` and the TUI. Use `reopen` to make them visible again.
+
 ### Interactive TUI
 
 ```bash

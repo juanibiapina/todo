@@ -464,6 +464,88 @@ func TestAddWithParentValidation(t *testing.T) {
 	}
 }
 
+func TestSetStatus(t *testing.T) {
+	dir := tempDir(t)
+
+	ticket, err := Add(dir, &Ticket{Title: "Status test"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	// Set to in_progress
+	title, err := SetStatus(dir, ticket.ID, "in_progress")
+	if err != nil {
+		t.Fatalf("SetStatus: %v", err)
+	}
+	if title != "Status test" {
+		t.Errorf("title = %q, want %q", title, "Status test")
+	}
+
+	loaded, err := Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if loaded.Status != "in_progress" {
+		t.Errorf("status = %q, want %q", loaded.Status, "in_progress")
+	}
+
+	// Set to closed
+	_, err = SetStatus(dir, ticket.ID, "closed")
+	if err != nil {
+		t.Fatalf("SetStatus closed: %v", err)
+	}
+	loaded, err = Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if loaded.Status != "closed" {
+		t.Errorf("status = %q, want %q", loaded.Status, "closed")
+	}
+
+	// Set to open
+	_, err = SetStatus(dir, ticket.ID, "open")
+	if err != nil {
+		t.Fatalf("SetStatus open: %v", err)
+	}
+	loaded, err = Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if loaded.Status != "open" {
+		t.Errorf("status = %q, want %q", loaded.Status, "open")
+	}
+}
+
+func TestSetStatusInvalid(t *testing.T) {
+	dir := tempDir(t)
+
+	ticket, err := Add(dir, &Ticket{Title: "Invalid status test"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	_, err = SetStatus(dir, ticket.ID, "invalid")
+	if err == nil {
+		t.Error("SetStatus with invalid status should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "invalid status") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestSetStatusNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	_, err := SetStatus(dir, "zzz", "open")
+	if err == nil {
+		t.Error("SetStatus with non-existent ID should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestParseFileDescriptionWithDashes(t *testing.T) {
 	dir := tempDir(t)
 	EnsureDir(dir)

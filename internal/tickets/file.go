@@ -232,6 +232,38 @@ func Done(dir string, id string) (string, error) {
 	return t.Title, nil
 }
 
+// validStatuses lists the allowed ticket statuses.
+var validStatuses = map[string]bool{
+	"open":        true,
+	"in_progress": true,
+	"closed":      true,
+}
+
+// SetStatus changes a ticket's status after validation.
+func SetStatus(dir string, id string, status string) (string, error) {
+	if !validStatuses[status] {
+		return "", fmt.Errorf("invalid status: %q (valid: open, in_progress, closed)", status)
+	}
+
+	path, err := findTicketFile(dir, id)
+	if err != nil {
+		return "", err
+	}
+
+	t, err := parseFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	t.Status = status
+
+	if err := writeFile(dir, t); err != nil {
+		return "", err
+	}
+
+	return t.Title, nil
+}
+
 // SetDescription sets or replaces a ticket's description.
 func SetDescription(dir string, id string, description string) (string, error) {
 	path, err := findTicketFile(dir, id)

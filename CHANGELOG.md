@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo add` flags: `-d/--description`, `-t/--type` (default `task`), `-p/--priority` (default `2`), `-a/--assignee` (default `git user.name`), `--external-ref`, `--parent` (validates existence), `--design`, `--acceptance`, `--tags` (comma-separated)
 - Default title "Untitled" when `todo add` is called with no arguments
 - Parent ticket validation: `--parent` must reference an existing ticket ID
+- `todo status <id> <status>` — set ticket status directly (valid: `open`, `in_progress`, `closed`)
+- `todo start <id>` — shortcut to set status to `in_progress`
+- `todo close <id>` — shortcut to set status to `closed`
+- `todo reopen <id>` — shortcut to set status to `open`
 
 ### Changed
 
