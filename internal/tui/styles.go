@@ -60,4 +60,14 @@ var (
 	metaLabelStyle      = lipgloss.NewStyle().Foreground(mutedColor)
 	metaValueStyle      = lipgloss.NewStyle().Foreground(fgColor)
 	sectionHeadingStyle = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
+
+	// List badges — priority
+	priorityHighStyle = lipgloss.NewStyle().Foreground(dangerColor)
+	priorityMedStyle  = lipgloss.NewStyle().Foreground(colorYellow)
+	priorityLowStyle  = lipgloss.NewStyle().Foreground(mutedColor)
+
+	// List badges — status
+	statusActiveStyle  = lipgloss.NewStyle().Foreground(successColor)
+	statusDefaultStyle = lipgloss.NewStyle().Foreground(fgColor)
+	statusClosedStyle  = lipgloss.NewStyle().Foreground(mutedColor)
 )

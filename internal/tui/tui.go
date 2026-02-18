@@ -557,6 +557,43 @@ func (m Model) renderPanels() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, listPanel, detailPanel)
 }
 
+func (m Model) priorityBadge(priority int, selected bool) string {
+	text := fmt.Sprintf("[P%d]", priority)
+	var style lipgloss.Style
+	switch {
+	case priority <= 1:
+		style = priorityHighStyle
+	case priority == 2:
+		style = priorityMedStyle
+	default:
+		style = priorityLowStyle
+	}
+	if selected {
+		style = style.Background(selectionBg)
+	}
+	return style.Render(text)
+}
+
+func (m Model) statusBadge(status string, selected bool) string {
+	if status == "" {
+		status = "open"
+	}
+	text := fmt.Sprintf("[%s]", status)
+	var style lipgloss.Style
+	switch status {
+	case "in_progress":
+		style = statusActiveStyle
+	case "closed":
+		style = statusClosedStyle
+	default:
+		style = statusDefaultStyle
+	}
+	if selected {
+		style = style.Background(selectionBg)
+	}
+	return style.Render(text)
+}
+
 func (m Model) renderTicketList(width int) string {
 	if len(m.items) == 0 {
 		return mutedStyle.Render("No tickets. Press 'a' to add one.")
@@ -577,8 +614,18 @@ func (m Model) renderTicketList(width int) string {
 			id = ticketIDStyle.Render(t.ID)
 		}
 
+		// Priority and status badges
+		prioBadge := m.priorityBadge(t.Priority, isSelected)
+		statBadge := m.statusBadge(t.Status, isSelected)
+
 		// Title (truncated)
-		maxTitleLen := width - 7 // id(3) + spaces + margin
+		// Layout: SP + ID(3) + SP + [P<n>](4) + [status](2+len) + SP + Title
+		status := t.Status
+		if status == "" {
+			status = "open"
+		}
+		prefixW := 1 + 3 + 1 + 4 + (2 + len(status)) + 1
+		maxTitleLen := width - prefixW
 		if maxTitleLen < 5 {
 			maxTitleLen = 5
 		}
@@ -597,13 +644,13 @@ func (m Model) renderTicketList(width int) string {
 		var line string
 		if isSelected {
 			sp := selectedBgStyle.Render(" ")
-			line = sp + id + sp + title
+			line = sp + id + sp + prioBadge + statBadge + sp + title
 			padding := width - lipgloss.Width(line)
 			if padding > 0 {
 				line = line + selectedBgStyle.Render(strings.Repeat(" ", padding))
 			}
 		} else {
-			line = fmt.Sprintf(" %s %s", id, title)
+			line = " " + id + " " + prioBadge + statBadge + " " + title
 		}
 
 		lines = append(lines, line)
