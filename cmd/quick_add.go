@@ -37,7 +37,7 @@ adds the ticket, and exits immediately.`,
 			return err
 		}
 
-		ticket, err := tickets.Add(dir, title, "")
+		ticket, err := tickets.Add(dir, &tickets.Ticket{Title: title})
 		if err != nil {
 			return err
 		}

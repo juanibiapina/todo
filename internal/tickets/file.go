@@ -95,6 +95,8 @@ func parseFile(path string) (*Ticket, error) {
 		Created:     fm.Created,
 		Parent:      fm.Parent,
 		ExternalRef: fm.ExternalRef,
+		Design:      fm.Design,
+		Acceptance:  fm.Acceptance,
 		Deps:        fm.Deps,
 		Links:       fm.Links,
 		Tags:        fm.Tags,
@@ -171,9 +173,17 @@ func List(dir string) ([]*Ticket, error) {
 }
 
 // Add creates a new ticket and returns it.
-func Add(dir string, title string, description string) (*Ticket, error) {
+// The caller provides a pre-populated Ticket; Add generates the ID and writes to disk.
+func Add(dir string, t *Ticket) (*Ticket, error) {
 	if err := EnsureDir(dir); err != nil {
 		return nil, err
+	}
+
+	// Validate parent exists if set
+	if t.Parent != "" {
+		if _, err := findTicketFile(dir, t.Parent); err != nil {
+			return nil, fmt.Errorf("parent ticket not found: %s", t.Parent)
+		}
 	}
 
 	// Get existing IDs to avoid collision
@@ -182,11 +192,7 @@ func Add(dir string, title string, description string) (*Ticket, error) {
 		return nil, err
 	}
 
-	t := &Ticket{
-		Title:       title,
-		ID:          generateUniqueID(existingIDs(tickets)),
-		Description: description,
-	}
+	t.ID = generateUniqueID(existingIDs(tickets))
 
 	if err := writeFile(dir, t); err != nil {
 		return nil, err

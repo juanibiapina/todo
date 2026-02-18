@@ -24,11 +24,14 @@ make install  # go install
 ### Add a ticket
 
 ````bash
-# Simple ticket
+# Simple ticket (defaults: type=task, priority=2, assignee=git user.name)
 todo add 'Fix login timeout'
 
 # With inline description
 todo add 'Fix login timeout' 'Users experience timeouts after 30s'
+
+# With description flag
+todo add 'Fix login timeout' -d 'Users experience timeouts after 30s'
 
 # With rich description via stdin
 todo add 'Fix login timeout' <<'EOF'
@@ -40,7 +43,33 @@ The `handleLogin` function in `auth.go` needs a longer timeout:
 ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 ```
 EOF
+
+# With metadata flags
+todo add 'Fix login timeout' -t bug -p 3 -a 'Alice' --tags 'auth,urgent'
+
+# With parent ticket and external reference
+todo add 'Subtask of login fix' --parent aBc --external-ref JIRA-456
+
+# With design and acceptance criteria
+todo add 'Refactor auth' --design 'Extract token validation' --acceptance 'All tests pass'
+
+# Default title ("Untitled") when no args
+todo add -t epic -p 1
 ````
+
+**Flags:**
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--description` | `-d` | | Ticket description (overrides positional arg and stdin) |
+| `--type` | `-t` | `task` | Type: `bug`, `feature`, `task`, `epic`, `chore` |
+| `--priority` | `-p` | `2` | Priority: `0`–`4` |
+| `--assignee` | `-a` | `git user.name` | Assignee |
+| `--external-ref` | | | External reference (e.g. JIRA-123) |
+| `--parent` | | | Parent ticket ID (must exist) |
+| `--design` | | | Design notes |
+| `--acceptance` | | | Acceptance criteria |
+| `--tags` | | | Comma-separated tags |
 
 ### List tickets
 
@@ -115,13 +144,16 @@ Each file contains YAML frontmatter followed by the title and optional descripti
 ```markdown
 ---
 id: aBc
+type: task
+priority: 2
+assignee: Alice
 ---
 # Fix login timeout
 Description goes here.
 Multiple lines are supported.
 ```
 
-The YAML frontmatter block (`---` delimited) contains the ticket metadata. The `id` field is always present; additional fields like `status`, `type`, `priority`, `assignee`, `tags`, etc. are included only when set. The `# Title` heading follows the frontmatter. Everything after the title line is the description.
+The YAML frontmatter block (`---` delimited) contains the ticket metadata. The `id` field is always present. Other fields (`status`, `type`, `priority`, `assignee`, `external_ref`, `parent`, `design`, `acceptance`, `tags`, `deps`, `links`, `created`) are included only when set (empty values are omitted). The `# Title` heading follows the frontmatter. Everything after the title line is the description.
 
 ## License
 
