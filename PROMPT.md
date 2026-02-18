@@ -53,7 +53,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests (iteration 15)
 - [x] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section (iteration 16)
 - [x] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests (iteration 17)
-- [ ] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests
+- [x] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests (iteration 18)
 - [ ] Add query command: output all tickets as JSONL with all frontmatter fields, support `--status`, `--type`, `--assignee`, `--tag` filters. Go-native implementation. Add bats tests for JSONL validity, field presence, filtering, and empty output
 
 ## Learnings
@@ -109,6 +109,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `AddNote()` checks `strings.Contains(t.Description, "## Notes")` to decide whether to create or append — avoids duplicating the `## Notes` header on multiple note additions
 - Note timestamp format uses bold markdown (`**2006-01-02 15:04 UTC**`) with `time.Now().UTC()` — always UTC for consistency across timezones
 - Stdin detection for `add-note` uses `os.Stdin.Stat()` checking `ModeCharDevice` flag — same pattern as `set-description`; text from positional arg takes precedence over stdin
+- `edit` command reuses `tickets.Show()` for partial ID resolution — no new library functions needed; file path constructed as `tickets.DirPath(dir)/<id>.md`
+- TTY detection via `term.IsTerminal(int(os.Stdout.Fd()))` consistent with `cmd/show.go` pager support — non-TTY prints file path for scripting (`path=$(todo edit aBc)`)
+- Bats `run` makes stdout non-TTY, so editor launch tested via `script -q /dev/null` to simulate a terminal with a marker-file editor; non-TTY path (file path printing) is naturally testable under `run`
 
 ## History
 
@@ -126,6 +129,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 18: Edit command to open ticket in $EDITOR
+- **Branch**: ralph/edit-command
+- **PR**: #19 (merged)
+- **Summary**: Created `cmd/edit.go` with `cobra.ExactArgs(1)` — uses `tickets.Show()` for partial ID resolution, `$EDITOR` env var with `vi` fallback, TTY detection via `golang.org/x/term.IsTerminal`. When stdout is TTY, launches editor with stdin/stdout/stderr connected; when non-TTY, prints file path for scripting. Created `test/edit.bats` with 7 integration tests covering non-TTY path print, partial ID resolution, nonexistent ticket error, EDITOR env var (via `script -q /dev/null` TTY simulation), file path correctness, file editability, and argument validation. Updated README.md and CHANGELOG.md. All 93 unit tests and 198 bats tests pass.
 
 ### Iteration 17: Add-note command for appending timestamped notes
 - **Branch**: ralph/add-note-command
