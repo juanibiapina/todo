@@ -42,7 +42,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Update all commands (add, done, show, list, set-description, format) to work with the new file format, naming, and ID generation. Update all existing bats tests to match new output format, ID patterns, and done behavior (status=closed instead of delete) (iteration 4)
 - [x] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values (iteration 5)
 - [x] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors (iteration 6)
-- [ ] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence
+- [x] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence (iteration 7)
 - [ ] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors
 - [ ] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode
 - [ ] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests
@@ -76,6 +76,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `SetStatus()` centralizes validation and status mutation at the library level using a `validStatuses` map — all 4 commands (status, start, close, reopen) delegate to it for consistent behavior
 - Shortcut commands (`start`, `close`, `reopen`) call `SetStatus()` with hardcoded status values rather than duplicating validation logic
 - `done` command left unchanged and coexists with `close` — both set status=closed, different output messages
+- `findTicketFile()` uses substring matching (`strings.Contains`) not just prefix — allows prefix, suffix, and interior substring matches on ticket IDs
+- No signature change to `findTicketFile` means all callers (show, done, close, start, reopen, status, set-description, parent validation) automatically get partial ID support without any code changes
+- Ambiguous match error uses `sort.Strings(ids)` for deterministic, testable error messages
 
 ## History
 
@@ -93,6 +96,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 7: Partial ID matching
+- **Branch**: ralph/partial-id-matching
+- **PR**: #8 (merged)
+- **Summary**: Enhanced `findTicketFile()` with partial ID resolution — exact match first via `os.Stat()`, then `os.ReadDir()` scanning `.md` files for substring matches using `strings.Contains()`. Added `sort` and `strings` imports. Ambiguous matches (2+) produce sorted error message. Added 6 unit tests (`TestFindTicketFilePartialPrefix`, `Suffix`, `Substring`, `Ambiguous`, `ExactPrecedence`, `NotFound`). Created `test/partial_id.bats` with 11 integration tests covering show/done/status/start/close/reopen/set-description with partial IDs, not-found error, and exact match precedence. Updated README.md and CHANGELOG.md. All 43 unit tests and 80 bats tests pass.
 
 ### Iteration 6: Status management commands
 - **Branch**: ralph/status-management-commands
