@@ -41,7 +41,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Change file naming from `<id>-<slug>.md` to `<id>.md`. Remove slugify(), update ticketFileName/ticketFilePath, update findTicketFile for exact match, update parseFile/writeFile for YAML-first frontmatter format. Update file_test.go unit tests (iteration 3)
 - [x] Update all commands (add, done, show, list, set-description, format) to work with the new file format, naming, and ID generation. Update all existing bats tests to match new output format, ID patterns, and done behavior (status=closed instead of delete) (iteration 4)
 - [x] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values (iteration 5)
-- [ ] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors
+- [x] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors (iteration 6)
 - [ ] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence
 - [ ] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors
 - [ ] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode
@@ -73,6 +73,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - Parent validation done in `Add()` data layer (not cobra command) — ensures consistency regardless of entry point (CLI, TUI, tests)
 - Description priority order: `-d` flag > positional arg > stdin — most explicit input wins
 - Default assignee uses `git config user.name`; detected via `cmd.Flags().Changed("assignee")` to only apply when flag not explicitly set
+- `SetStatus()` centralizes validation and status mutation at the library level using a `validStatuses` map — all 4 commands (status, start, close, reopen) delegate to it for consistent behavior
+- Shortcut commands (`start`, `close`, `reopen`) call `SetStatus()` with hardcoded status values rather than duplicating validation logic
+- `done` command left unchanged and coexists with `close` — both set status=closed, different output messages
 
 ## History
 
@@ -90,6 +93,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 6: Status management commands
+- **Branch**: ralph/status-management-commands
+- **PR**: #7 (merged)
+- **Summary**: Added `SetStatus(dir, id, status string)` function with `validStatuses` map for validation. Created 4 new commands: `status <id> <status>`, `start <id>` (sets in_progress), `close <id>` (sets closed), `reopen <id>` (sets open). Added 3 unit tests (`TestSetStatus`, `TestSetStatusInvalid`, `TestSetStatusNotFound`). Created 4 bats test files with 18 integration tests (`test/status.bats` 7, `test/start.bats` 3, `test/close.bats` 4, `test/reopen.bats` 4). Updated README.md and CHANGELOG.md. All 37 unit tests and 69 bats tests pass.
 
 ### Iteration 5: Add command creation flags
 - **Branch**: ralph/add-command-flags
