@@ -283,6 +283,38 @@ todo blocked -T urgent
 | `--assignee` | `-a` | Filter by assignee |
 | `--tag` | `-T` | Filter by tag |
 
+### Closed tickets
+
+```bash
+todo closed
+# xYz - Completed login fix
+# aBc - Old feature request
+```
+
+Shows recently closed tickets sorted by file modification time (most recent first). Default limit is 20.
+
+Output format: `id - Title`. Status is omitted since all displayed tickets are closed.
+
+```bash
+# Limit the number of results
+todo closed --limit 10
+todo closed -n 5
+
+# Filter by assignee
+todo closed -a Alice
+
+# Filter by tag
+todo closed -T backend
+```
+
+**Flags:**
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--limit` | `-n` | `20` | Maximum number of tickets to show |
+| `--assignee` | `-a` | | Filter by assignee |
+| `--tag` | `-T` | | Filter by tag |
+
 ### Manage links
 
 ```bash
