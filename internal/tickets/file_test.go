@@ -570,6 +570,163 @@ func TestParseFileDescriptionWithDashes(t *testing.T) {
 	}
 }
 
+func TestAddDep(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	err = AddDep(dir, a.ID, b.ID)
+	if err != nil {
+		t.Fatalf("AddDep: %v", err)
+	}
+
+	loaded, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if len(loaded.Deps) != 1 {
+		t.Fatalf("Deps len = %d, want 1", len(loaded.Deps))
+	}
+	if loaded.Deps[0] != b.ID {
+		t.Errorf("Deps[0] = %q, want %q", loaded.Deps[0], b.ID)
+	}
+}
+
+func TestAddDepIdempotent(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	// Add twice — should be idempotent
+	AddDep(dir, a.ID, b.ID)
+	err = AddDep(dir, a.ID, b.ID)
+	if err != nil {
+		t.Fatalf("AddDep (second): %v", err)
+	}
+
+	loaded, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if len(loaded.Deps) != 1 {
+		t.Errorf("Deps len = %d, want 1 (should not duplicate)", len(loaded.Deps))
+	}
+}
+
+func TestAddDepTicketNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	err = AddDep(dir, "zzz", b.ID)
+	if err == nil {
+		t.Error("AddDep with non-existent ticket should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestAddDepDepNotFound(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+
+	err = AddDep(dir, a.ID, "zzz")
+	if err == nil {
+		t.Error("AddDep with non-existent dep should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestRemoveDep(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	AddDep(dir, a.ID, b.ID)
+
+	err = RemoveDep(dir, a.ID, b.ID)
+	if err != nil {
+		t.Fatalf("RemoveDep: %v", err)
+	}
+
+	loaded, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if len(loaded.Deps) != 0 {
+		t.Errorf("Deps len = %d, want 0", len(loaded.Deps))
+	}
+}
+
+func TestRemoveDepNotPresent(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	// Remove dep that was never added — should succeed (idempotent)
+	err = RemoveDep(dir, a.ID, b.ID)
+	if err != nil {
+		t.Fatalf("RemoveDep (not present): %v", err)
+	}
+}
+
+func TestRemoveDepTicketNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	err = RemoveDep(dir, "zzz", b.ID)
+	if err == nil {
+		t.Error("RemoveDep with non-existent ticket should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestFindTicketFilePartialPrefix(t *testing.T) {
 	dir := tempDir(t)
 	EnsureDir(dir)

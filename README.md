@@ -144,6 +144,18 @@ todo reopen aBc     # set status to open
 
 Closed tickets are hidden from `list` and the TUI. Use `reopen` to make them visible again.
 
+### Manage dependencies
+
+```bash
+# Add a dependency (ticket aBc depends on xYz)
+todo dep aBc xYz
+
+# Remove a dependency
+todo undep aBc xYz
+```
+
+Both commands validate that the referenced tickets exist. Operations are idempotent — adding an existing dependency or removing a non-existent one succeeds silently. Partial ID matching is supported for both arguments.
+
 ### Interactive TUI
 
 ```bash
