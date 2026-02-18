@@ -172,6 +172,23 @@ todo dep tree aBc --full
 
 The tree uses box-drawing characters (`├── `, `└── `, `│   `) and shows `[status]` when set. Children are sorted by subtree depth (deepest first), then by ID. Cycles are marked with `(cycle)` and duplicate nodes with `(dup)`. Use `--full` to disable deduplication.
 
+#### Cycle detection
+
+```bash
+# Detect dependency cycles among open tickets
+todo dep cycle
+```
+
+Performs DFS-based cycle detection on all non-closed tickets. Each cycle is displayed as a normalized path (rotated so the smallest ID is first) with member details:
+
+```
+Cycle: aBc -> xYz -> aBc
+  aBc [open] Fix login timeout
+  xYz [in_progress] Refactor auth module
+```
+
+Closed tickets are excluded from the analysis. If no cycles are found, the command produces no output.
+
 ### Interactive TUI
 
 ```bash

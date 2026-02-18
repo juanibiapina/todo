@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo dep <id> <dep-id>` — add a dependency between tickets (idempotent, validates both exist)
 - `todo undep <id> <dep-id>` — remove a dependency between tickets (idempotent, validates both exist)
 - `todo dep tree <id>` — display dependency tree with box-drawing characters, `[status]` labels, cycle/dedup markers, and `--full` flag to disable deduplication
+- `todo dep cycle` — DFS-based cycle detection on open (non-closed) tickets, outputs normalized cycles with member details
 
 ### Changed
 
