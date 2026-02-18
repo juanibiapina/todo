@@ -54,7 +54,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section (iteration 16)
 - [x] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests (iteration 17)
 - [x] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests (iteration 18)
-- [ ] Add query command: output all tickets as JSONL with all frontmatter fields, support `--status`, `--type`, `--assignee`, `--tag` filters. Go-native implementation. Add bats tests for JSONL validity, field presence, filtering, and empty output
+- [x] Add query command: output all tickets as JSONL with all frontmatter fields, support `--status`, `--type`, `--assignee`, `--tag` filters. Go-native implementation. Add bats tests for JSONL validity, field presence, filtering, and empty output (iteration 19)
 
 ## Learnings
 
@@ -112,6 +112,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `edit` command reuses `tickets.Show()` for partial ID resolution — no new library functions needed; file path constructed as `tickets.DirPath(dir)/<id>.md`
 - TTY detection via `term.IsTerminal(int(os.Stdout.Fd()))` consistent with `cmd/show.go` pager support — non-TTY prints file path for scripting (`path=$(todo edit aBc)`)
 - Bats `run` makes stdout non-TTY, so editor launch tested via `script -q /dev/null` to simulate a terminal with a marker-file editor; non-TTY path (file path printing) is naturally testable under `run`
+- `queryTicket` struct separate from `tickets.Ticket` — JSON-specific serialization concerns (`json:"external_ref,omitempty"`, nil-slice handling) kept in command layer rather than polluting the domain struct
+- Nil slices (`deps`, `links`, `tags`) must be initialized to `[]string{}` before JSON marshaling to serialize as `[]` not `null` — Go's `encoding/json` marshals nil slices as `null`
+- `--status open` special-casing reused from `list` command: checks `t.Status != "" && t.Status != "open"` to match newly created tickets with empty status as "open"
 
 ## History
 
@@ -129,6 +132,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 19: Query command for JSONL ticket output with filters
+- **Branch**: ralph/query-command
+- **PR**: #20 (merged)
+- **Summary**: Created `cmd/query.go` with `queryTicket` struct (separate from `tickets.Ticket` for JSON-specific serialization), `toQueryTicket()` converter that initializes nil slices to `[]string{}` for proper JSON array output. Supports `--status`, `--type`, `-a/--assignee`, `-T/--tag` filters with AND logic. `--status open` matches empty status. JSONL output (one JSON object per line) using `encoding/json` from stdlib. Created `test/query.bats` with 13 integration tests covering empty output, valid JSONL, field presence, all frontmatter fields, arrays-not-null, deps/links, status/type/assignee/tag filters, combined filters, and description field. All 93 unit tests and 211 bats tests pass.
 
 ### Iteration 18: Edit command to open ticket in $EDITOR
 - **Branch**: ralph/edit-command
