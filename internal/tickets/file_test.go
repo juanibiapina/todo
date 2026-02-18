@@ -101,7 +101,7 @@ func TestShowByID(t *testing.T) {
 func TestDone(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "To remove", "")
+	ticket, err := Add(dir, "To close", "")
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -110,22 +110,32 @@ func TestDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Done: %v", err)
 	}
-	if title != "To remove" {
+	if title != "To close" {
 		t.Errorf("title = %q", title)
 	}
 
+	// File should still exist
+	path := filepath.Join(DirPath(dir), ticket.ID+".md")
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("file should still exist: %v", err)
+	}
+
+	// Ticket should have status=closed
+	loaded, err := Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show after Done: %v", err)
+	}
+	if loaded.Status != "closed" {
+		t.Errorf("status = %q, want %q", loaded.Status, "closed")
+	}
+
+	// List still returns all tickets (including closed)
 	tickets, err := List(dir)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(tickets) != 0 {
-		t.Errorf("len = %d, want 0", len(tickets))
-	}
-
-	// Verify file is actually deleted
-	path := filepath.Join(DirPath(dir), ticket.ID+".md")
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Errorf("file still exists: %s", path)
+	if len(tickets) != 1 {
+		t.Errorf("len = %d, want 1", len(tickets))
 	}
 }
 
@@ -194,15 +204,25 @@ func TestMultipleTickets(t *testing.T) {
 		t.Fatalf("len = %d, want 3", len(tickets))
 	}
 
-	// Remove middle one by ID
+	// Close middle one by ID
 	Done(dir, second.ID)
 
+	// List still returns all 3 (including closed)
 	tickets, err = List(dir)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(tickets) != 2 {
-		t.Fatalf("len = %d, want 2", len(tickets))
+	if len(tickets) != 3 {
+		t.Fatalf("len = %d, want 3", len(tickets))
+	}
+
+	// Verify the closed ticket has status=closed
+	closed, err := Show(dir, second.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if closed.Status != "closed" {
+		t.Errorf("status = %q, want %q", closed.Status, "closed")
 	}
 }
 

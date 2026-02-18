@@ -205,7 +205,7 @@ func Show(dir string, id string) (*Ticket, error) {
 	return parseFile(path)
 }
 
-// Done removes a ticket by ID.
+// Done marks a ticket as closed by setting its status.
 func Done(dir string, id string) (string, error) {
 	path, err := findTicketFile(dir, id)
 	if err != nil {
@@ -217,7 +217,9 @@ func Done(dir string, id string) (string, error) {
 		return "", err
 	}
 
-	if err := os.Remove(path); err != nil {
+	t.Status = "closed"
+
+	if err := writeFile(dir, t); err != nil {
 		return "", err
 	}
 

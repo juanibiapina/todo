@@ -82,13 +82,15 @@ EOF
 todo done aBc
 ```
 
+This sets the ticket's status to `closed`. The ticket file is preserved on disk but hidden from `list` and the TUI. Use `show` to view closed tickets.
+
 ### Interactive TUI
 
 ```bash
 todo tui
 ```
 
-Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, and delete tickets interactively.
+Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, and close tickets interactively.
 
 ### Quick add (for tmux popups)
 
