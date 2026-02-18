@@ -123,6 +123,28 @@ An empty result produces no output.
 todo show aBc
 ```
 
+The output includes YAML frontmatter, title, description, and computed relationship sections:
+
+- **Blockers** — unclosed tickets this ticket depends on
+- **Blocking** — tickets that depend on this ticket (when this ticket is unclosed)
+- **Children** — tickets whose parent is this ticket
+- **Linked** — tickets linked to this ticket
+
+Sections are only shown when non-empty. Each entry is formatted as `- id [status] Title`.
+
+When a ticket has a parent, the frontmatter `parent:` line is enhanced with the parent's title (e.g. `parent: aBc (Fix login timeout)`).
+
+#### Pager support
+
+Set the `TODO_PAGER` environment variable to pipe `show` output through a pager:
+
+```bash
+export TODO_PAGER="less -R"
+todo show aBc
+```
+
+The pager is only used when stdout is a terminal (piped output is never paged).
+
 ### Partial ID matching
 
 All commands that accept a ticket ID support partial matching. You can use any unique substring of the ID:

@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo ready` — show tickets ready to work on (open/in_progress with all deps closed or no deps), sorted by priority then ID, with `-a/--assignee` and `-T/--tag` filters
 - `todo blocked` — show tickets blocked by unclosed dependencies (open/in_progress with ≥1 unclosed dep), sorted by priority then ID, with `-a/--assignee` and `-T/--tag` filters
 - `todo closed` — show recently closed tickets sorted by file modification time (most recent first), with `--limit`/`-n` (default 20), `-a/--assignee`, and `-T/--tag` filters
+- `todo show` now displays computed relationship sections: Blockers (unclosed deps), Blocking (reverse deps), Children (sub-tickets), and Linked (resolved links). Sections only shown when non-empty.
+- `TODO_PAGER` environment variable: set to pipe `todo show` output through a pager (e.g. `less -R`). Only activates when stdout is a terminal.
 
 ### Changed
 
@@ -38,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File format uses YAML frontmatter (`---` delimited) followed by `# Title` heading and description
   - Enables better git diffs and easier manual editing
 - `todo done` now sets `status: closed` instead of deleting the ticket file. Closed tickets are preserved on disk but hidden from `list` and TUI.
+- `todo show` enhances the `parent:` frontmatter line with the parent ticket's title (e.g. `parent: aBc (Fix login timeout)`)
 - `todo list` output format now shows `id [status] - Title <- [dep1, dep2]` (status and deps omitted when empty)
 - Empty `todo list` result now produces no output instead of "No tickets" message
 - All commands now reference tickets by ID only, not by title

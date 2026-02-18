@@ -79,12 +79,13 @@ load test_helper
   run todo link "${id_a}" "${id_b}"
   assert_success
 
-  # A should have B only once
+  # A should have B only once — count in the YAML frontmatter section only
   run todo show "${id_a}"
   assert_success
-  local count
-  count=$(echo "$output" | grep -c "${id_b}" || true)
-  [ "$count" -eq 1 ]
+  # Extract frontmatter (between --- delimiters) and count link ID occurrences
+  local fm_count
+  fm_count=$(echo "$output" | sed -n '/^---$/,/^---$/p' | grep -c "${id_b}" || true)
+  [ "$fm_count" -eq 1 ]
 }
 
 @test "link fails when ticket does not exist" {
