@@ -13,28 +13,6 @@ func tempDir(t *testing.T) string {
 	return dir
 }
 
-func TestSlugify(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"Fix login bug", "fix-login-bug"},
-		{"Hello World!", "hello-world"},
-		{"  spaces  ", "spaces"},
-		{"UPPERCASE", "uppercase"},
-		{"special@#$chars", "special-chars"},
-		{"multiple---hyphens", "multiple-hyphens"},
-		{"", ""},
-	}
-
-	for _, tt := range tests {
-		got := slugify(tt.input)
-		if got != tt.want {
-			t.Errorf("slugify(%q) = %q, want %q", tt.input, got, tt.want)
-		}
-	}
-}
-
 func TestAddAndList(t *testing.T) {
 	dir := tempDir(t)
 
@@ -145,10 +123,9 @@ func TestDone(t *testing.T) {
 	}
 
 	// Verify file is actually deleted
-	pattern := filepath.Join(DirPath(dir), ticket.ID+"-*.md")
-	matches, _ := filepath.Glob(pattern)
-	if len(matches) != 0 {
-		t.Errorf("file still exists: %v", matches)
+	path := filepath.Join(DirPath(dir), ticket.ID+".md")
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("file still exists: %s", path)
 	}
 }
 
@@ -271,8 +248,8 @@ func TestFileFormat(t *testing.T) {
 		t.Fatalf("Add: %v", err)
 	}
 
-	// Check file exists in tickets directory with correct name pattern
-	expectedFilename := ticket.ID + "-my-ticket.md"
+	// Check file exists with <id>.md naming
+	expectedFilename := ticket.ID + ".md"
 	path := filepath.Join(DirPath(dir), expectedFilename)
 
 	data, err := os.ReadFile(path)
@@ -281,32 +258,43 @@ func TestFileFormat(t *testing.T) {
 	}
 
 	content := string(data)
-	if !strings.HasPrefix(content, "# My Ticket\n") {
-		t.Error("missing or wrong title heading")
+
+	// Verify YAML-frontmatter-first format
+	if !strings.HasPrefix(content, "---\n") {
+		t.Error("should start with YAML frontmatter delimiter")
 	}
 	if !strings.Contains(content, "id: "+ticket.ID) {
-		t.Error("missing id")
+		t.Error("missing id in frontmatter")
+	}
+	if !strings.Contains(content, "# My Ticket") {
+		t.Error("missing title heading after frontmatter")
 	}
 	if !strings.Contains(content, "Some description") {
 		t.Error("missing description")
+	}
+
+	// Verify order: frontmatter before title
+	fmEnd := strings.Index(content[4:], "\n---\n")
+	titleIdx := strings.Index(content, "# My Ticket")
+	if fmEnd < 0 || titleIdx < 0 || titleIdx < fmEnd {
+		t.Error("title should come after frontmatter closing delimiter")
 	}
 }
 
 func TestTicketFileName(t *testing.T) {
 	tests := []struct {
-		id    string
-		title string
-		want  string
+		id   string
+		want string
 	}{
-		{"abc", "Fix login bug", "abc-fix-login-bug.md"},
-		{"XYZ", "Hello World!", "XYZ-hello-world.md"},
-		{"123", "Test", "123-test.md"},
+		{"abc", "abc.md"},
+		{"XYZ", "XYZ.md"},
+		{"123", "123.md"},
 	}
 
 	for _, tt := range tests {
-		got := ticketFileName(tt.id, tt.title)
+		got := ticketFileName(tt.id)
 		if got != tt.want {
-			t.Errorf("ticketFileName(%q, %q) = %q, want %q", tt.id, tt.title, got, tt.want)
+			t.Errorf("ticketFileName(%q) = %q, want %q", tt.id, got, tt.want)
 		}
 	}
 }
@@ -338,5 +326,99 @@ func TestEnsureDir(t *testing.T) {
 	// Calling again should be fine
 	if err := EnsureDir(dir); err != nil {
 		t.Fatalf("EnsureDir (second call): %v", err)
+	}
+}
+
+func TestParseFileRoundTripAllFields(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	original := &Ticket{
+		Title:       "Full ticket",
+		ID:          "ful",
+		Description: "A complete ticket.",
+		Status:      "open",
+		Type:        "feature",
+		Priority:    3,
+		Assignee:    "alice",
+		Created:     "2026-01-15",
+		Parent:      "prt",
+		ExternalRef: "JIRA-123",
+		Deps:        []string{"dep1", "dep2"},
+		Links:       []string{"lnk1"},
+		Tags:        []string{"backend", "urgent"},
+	}
+
+	if err := writeFile(dir, original); err != nil {
+		t.Fatalf("writeFile: %v", err)
+	}
+
+	loaded, err := Show(dir, "ful")
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+
+	if loaded.Title != original.Title {
+		t.Errorf("Title = %q, want %q", loaded.Title, original.Title)
+	}
+	if loaded.ID != original.ID {
+		t.Errorf("ID = %q, want %q", loaded.ID, original.ID)
+	}
+	if loaded.Description != original.Description {
+		t.Errorf("Description = %q, want %q", loaded.Description, original.Description)
+	}
+	if loaded.Status != original.Status {
+		t.Errorf("Status = %q, want %q", loaded.Status, original.Status)
+	}
+	if loaded.Type != original.Type {
+		t.Errorf("Type = %q, want %q", loaded.Type, original.Type)
+	}
+	if loaded.Priority != original.Priority {
+		t.Errorf("Priority = %d, want %d", loaded.Priority, original.Priority)
+	}
+	if loaded.Assignee != original.Assignee {
+		t.Errorf("Assignee = %q, want %q", loaded.Assignee, original.Assignee)
+	}
+	if loaded.Created != original.Created {
+		t.Errorf("Created = %q, want %q", loaded.Created, original.Created)
+	}
+	if loaded.Parent != original.Parent {
+		t.Errorf("Parent = %q, want %q", loaded.Parent, original.Parent)
+	}
+	if loaded.ExternalRef != original.ExternalRef {
+		t.Errorf("ExternalRef = %q, want %q", loaded.ExternalRef, original.ExternalRef)
+	}
+	if len(loaded.Deps) != len(original.Deps) {
+		t.Errorf("Deps len = %d, want %d", len(loaded.Deps), len(original.Deps))
+	}
+	if len(loaded.Links) != len(original.Links) {
+		t.Errorf("Links len = %d, want %d", len(loaded.Links), len(original.Links))
+	}
+	if len(loaded.Tags) != len(original.Tags) {
+		t.Errorf("Tags len = %d, want %d", len(loaded.Tags), len(original.Tags))
+	}
+}
+
+func TestParseFileDescriptionWithDashes(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	original := &Ticket{
+		Title:       "Dash test",
+		ID:          "dsh",
+		Description: "Some text\n---\nMore text after dashes",
+	}
+
+	if err := writeFile(dir, original); err != nil {
+		t.Fatalf("writeFile: %v", err)
+	}
+
+	loaded, err := Show(dir, "dsh")
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+
+	if loaded.Description != original.Description {
+		t.Errorf("Description = %q, want %q", loaded.Description, original.Description)
 	}
 }
