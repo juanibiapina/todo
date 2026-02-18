@@ -35,6 +35,30 @@ func formatReadyLine(t *tickets.Ticket) string {
 	return b.String()
 }
 
+func formatBlockedLine(t *tickets.Ticket, unclosedBlockers []string) string {
+	var b strings.Builder
+
+	b.WriteString(cliID(t.ID))
+	b.WriteString(fmt.Sprintf(" [P%d]", t.Priority))
+
+	status := t.Status
+	if status == "" {
+		status = "open"
+	}
+	b.WriteString(fmt.Sprintf("[%s]", status))
+
+	b.WriteString(" - ")
+	b.WriteString(t.Title)
+
+	if len(unclosedBlockers) > 0 {
+		b.WriteString(" <- [")
+		b.WriteString(strings.Join(unclosedBlockers, ", "))
+		b.WriteString("]")
+	}
+
+	return b.String()
+}
+
 func formatTicketLine(t *tickets.Ticket) string {
 	var b strings.Builder
 
