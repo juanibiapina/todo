@@ -37,9 +37,10 @@ type tickMsg time.Time
 
 // Model is the main TUI model
 type Model struct {
-	dir    string
-	items  []*tickets.Ticket
-	scroll ScrollState
+	dir        string
+	items      []*tickets.Ticket
+	allTickets []*tickets.Ticket
+	scroll     ScrollState
 
 	activePanel panel
 	modal       modalMode
@@ -92,12 +93,13 @@ func (m Model) loadTickets() tea.Cmd {
 				items = append(items, t)
 			}
 		}
-		return ticketsLoadedMsg{items: items}
+		return ticketsLoadedMsg{items: items, allTickets: allItems}
 	}
 }
 
 type ticketsLoadedMsg struct {
-	items []*tickets.Ticket
+	items      []*tickets.Ticket
+	allTickets []*tickets.Ticket
 }
 
 type actionDoneMsg struct {
@@ -140,6 +142,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ticketsLoadedMsg:
 		m.items = msg.items
+		m.allTickets = msg.allTickets
 		m.scroll.ClampToCount(len(m.items))
 		m.updateDetailContent()
 
@@ -235,10 +238,16 @@ func (m *Model) updateDetailContent() {
 		b.WriteString("\n")
 	}
 
-	// Parent
+	// Parent — enhanced with resolved title if available
 	if t.Parent != "" {
 		b.WriteString(metaLabelStyle.Render("Parent: "))
-		b.WriteString(metaValueStyle.Render(t.Parent))
+		rel := tickets.ComputeRelations(t, m.allTickets)
+		if rel.ParentTicket != nil {
+			b.WriteString(ticketIDStyle.Render(rel.ParentTicket.ID))
+			b.WriteString(metaValueStyle.Render(" ("+rel.ParentTicket.Title+")"))
+		} else {
+			b.WriteString(metaValueStyle.Render(t.Parent))
+		}
 		b.WriteString("\n")
 	}
 
@@ -309,8 +318,38 @@ func (m *Model) updateDetailContent() {
 		}
 	}
 
+	// Computed relationships
+	rel := tickets.ComputeRelations(t, m.allTickets)
+	m.renderRelationSection(&b, "Blockers", rel.Blockers)
+	m.renderRelationSection(&b, "Blocking", rel.Blocking)
+	m.renderRelationSection(&b, "Children", rel.Children)
+	m.renderRelationSection(&b, "Linked", rel.Linked)
+
 	m.detailView.SetContent(b.String())
 	m.detailView.GotoTop()
+}
+
+func (m *Model) renderRelationSection(b *strings.Builder, heading string, items []*tickets.Ticket) {
+	if len(items) == 0 {
+		return
+	}
+	b.WriteString("\n")
+	b.WriteString(sectionHeadingStyle.Render(heading))
+	b.WriteString("\n")
+	for _, t := range items {
+		b.WriteString(m.renderRelationLine(t))
+		b.WriteString("\n")
+	}
+}
+
+func (m *Model) renderRelationLine(t *tickets.Ticket) string {
+	status := t.Status
+	if status == "" {
+		status = "open"
+	}
+	return "  " + ticketIDStyle.Render(t.ID) + " " +
+		mutedStyle.Render("["+status+"]") + " " +
+		metaValueStyle.Render(t.Title)
 }
 
 func (m Model) updateModal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
