@@ -2,7 +2,7 @@
 
 load test_helper
 
-@test "done: removes ticket" {
+@test "done: closes ticket" {
   local out
   out="$(todo add "To be done")"
   local id
@@ -12,6 +12,11 @@ load test_helper
   assert_success
   assert_output --partial "Completed ticket"
   assert_output --partial "To be done"
+
+  # Ticket should have status: closed
+  run todo show "${id}"
+  assert_success
+  assert_output --partial "status: closed"
 
   # Ticket should no longer appear in list
   run todo list
@@ -24,7 +29,7 @@ load test_helper
   assert_output --partial "ticket not found"
 }
 
-@test "done: only removes the targeted ticket" {
+@test "done: only closes the targeted ticket" {
   local out1 out2
   out1="$(todo add "Keep me")"
   out2="$(todo add "Remove me")"
@@ -39,7 +44,7 @@ load test_helper
   refute_output --partial "Remove me"
 }
 
-@test "done: reduces ticket count by one" {
+@test "done: reduces visible ticket count by one" {
   todo add "One"
   local out
   out="$(todo add "Two")"
@@ -52,4 +57,16 @@ load test_helper
   todo done "${id}"
 
   [[ "$(ticket_count)" -eq 2 ]]
+}
+
+@test "done: ticket file still exists after close" {
+  local out
+  out="$(todo add "Persisted")"
+  local id
+  id="$(echo "${out}" | awk '{print $2}')"
+
+  todo done "${id}"
+
+  # File should still be on disk
+  [[ -f "docs/tickets/${id}.md" ]]
 }

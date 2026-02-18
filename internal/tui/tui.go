@@ -84,7 +84,14 @@ func tickCmd() tea.Cmd {
 
 func (m Model) loadTickets() tea.Cmd {
 	return func() tea.Msg {
-		items, _ := tickets.List(m.dir)
+		allItems, _ := tickets.List(m.dir)
+		// Filter out closed tickets
+		var items []*tickets.Ticket
+		for _, t := range allItems {
+			if t.Status != "closed" {
+				items = append(items, t)
+			}
+		}
 		return ticketsLoadedMsg{items: items}
 	}
 }

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Each ticket is a separate file named `<id>.md`
   - File format uses YAML frontmatter (`---` delimited) followed by `# Title` heading and description
   - Enables better git diffs and easier manual editing
+- `todo done` now sets `status: closed` instead of deleting the ticket file. Closed tickets are preserved on disk but hidden from `list` and TUI.
 - All commands now reference tickets by ID only, not by title
   - Affects: `show`, `done`, `set-description`
   - Title fallback removed from internal lookup functions

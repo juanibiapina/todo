@@ -19,9 +19,17 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		items, err := tickets.List(dir)
+		allItems, err := tickets.List(dir)
 		if err != nil {
 			return err
+		}
+
+		// Filter out closed tickets
+		var items []*tickets.Ticket
+		for _, t := range allItems {
+			if t.Status != "closed" {
+				items = append(items, t)
+			}
 		}
 
 		if len(items) == 0 {
