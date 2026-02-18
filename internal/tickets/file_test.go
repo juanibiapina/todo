@@ -939,6 +939,130 @@ func TestRemoveLinkTicketNotFound(t *testing.T) {
 	}
 }
 
+func TestAddNote(t *testing.T) {
+	dir := tempDir(t)
+
+	ticket, err := Add(dir, &Ticket{Title: "Note test"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	title, err := AddNote(dir, ticket.ID, "First note")
+	if err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+	if title != "Note test" {
+		t.Errorf("title = %q, want %q", title, "Note test")
+	}
+
+	loaded, err := Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if !strings.Contains(loaded.Description, "## Notes") {
+		t.Error("description should contain ## Notes header")
+	}
+	if !strings.Contains(loaded.Description, "First note") {
+		t.Error("description should contain note text")
+	}
+	if !strings.Contains(loaded.Description, "**") {
+		t.Error("description should contain timestamp markers")
+	}
+}
+
+func TestAddNoteToExistingDescription(t *testing.T) {
+	dir := tempDir(t)
+
+	ticket, err := Add(dir, &Ticket{Title: "Has desc", Description: "Existing description"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	_, err = AddNote(dir, ticket.ID, "A note")
+	if err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+
+	loaded, err := Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if !strings.Contains(loaded.Description, "Existing description") {
+		t.Error("original description should be preserved")
+	}
+	if !strings.Contains(loaded.Description, "## Notes") {
+		t.Error("should contain ## Notes header")
+	}
+	if !strings.Contains(loaded.Description, "A note") {
+		t.Error("should contain note text")
+	}
+}
+
+func TestAddNoteMultiple(t *testing.T) {
+	dir := tempDir(t)
+
+	ticket, err := Add(dir, &Ticket{Title: "Multi note"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	AddNote(dir, ticket.ID, "First note")
+	AddNote(dir, ticket.ID, "Second note")
+
+	loaded, err := Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if !strings.Contains(loaded.Description, "First note") {
+		t.Error("should contain first note")
+	}
+	if !strings.Contains(loaded.Description, "Second note") {
+		t.Error("should contain second note")
+	}
+	// Should only have one ## Notes header
+	if strings.Count(loaded.Description, "## Notes") != 1 {
+		t.Errorf("should have exactly one ## Notes header, got %d", strings.Count(loaded.Description, "## Notes"))
+	}
+}
+
+func TestAddNoteEmptyDescription(t *testing.T) {
+	dir := tempDir(t)
+
+	ticket, err := Add(dir, &Ticket{Title: "Empty desc"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	_, err = AddNote(dir, ticket.ID, "Note on empty")
+	if err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+
+	loaded, err := Show(dir, ticket.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if !strings.HasPrefix(loaded.Description, "## Notes") {
+		t.Error("description should start with ## Notes when originally empty")
+	}
+	if !strings.Contains(loaded.Description, "Note on empty") {
+		t.Error("should contain note text")
+	}
+}
+
+func TestAddNoteNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	_, err := AddNote(dir, "zzz", "Some note")
+	if err == nil {
+		t.Error("AddNote with non-existent ID should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestFindTicketFilePartialPrefix(t *testing.T) {
 	dir := tempDir(t)
 	EnsureDir(dir)

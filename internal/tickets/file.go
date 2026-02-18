@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -476,6 +477,40 @@ func RemoveLink(dir string, id string, targetID string) error {
 	}
 
 	return nil
+}
+
+// AddNote appends a timestamped note to a ticket's description under a ## Notes section.
+func AddNote(dir string, id string, text string) (string, error) {
+	path, err := findTicketFile(dir, id)
+	if err != nil {
+		return "", err
+	}
+
+	t, err := parseFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	timestamp := time.Now().UTC().Format("2006-01-02 15:04 UTC")
+	noteEntry := fmt.Sprintf("**%s**\n\n%s", timestamp, text)
+
+	if strings.Contains(t.Description, "## Notes") {
+		// Append to existing Notes section
+		t.Description = t.Description + "\n\n" + noteEntry
+	} else {
+		// Add Notes section
+		if t.Description != "" {
+			t.Description = t.Description + "\n\n## Notes\n\n" + noteEntry
+		} else {
+			t.Description = "## Notes\n\n" + noteEntry
+		}
+	}
+
+	if err := os.WriteFile(path, []byte(t.FullString()), 0644); err != nil {
+		return "", err
+	}
+
+	return t.Title, nil
 }
 
 // SetDescription sets or replaces a ticket's description.
