@@ -46,7 +46,7 @@ Update the bubbletea TUI (`internal/tui/`) to reflect all features added across 
 ## Steps
 
 - [x] Enrich the detail panel with all ticket metadata fields. Show Status (display "open" when empty), Type, Priority, Assignee, Created, Parent, ExternalRef, Tags, Deps, Links after the ID line using styled labels. Show Design and Acceptance as labeled sections before Description. Keep existing glamour-rendered Description and markdown cache. Update `updateDetailContent()` in `internal/tui/tui.go`. All existing tests must pass (iteration 1)
-- [ ] Add computed relationships to the detail panel. Store the full unfiltered ticket list (`allTickets`) on the Model struct alongside the filtered `items`. In `updateDetailContent()`, call `tickets.ComputeRelations(ticket, m.allTickets)` and append Blockers, Blocking, Children, Linked sections (styled headings + `ID [status] Title` lines) after Description. Enhance Parent display with resolved title. Update `loadTickets()` to return both filtered items and all tickets in `ticketsLoadedMsg`. All existing tests must pass
+- [x] Add computed relationships to the detail panel. Store the full unfiltered ticket list (`allTickets`) on the Model struct alongside the filtered `items`. In `updateDetailContent()`, call `tickets.ComputeRelations(ticket, m.allTickets)` and append Blockers, Blocking, Children, Linked sections (styled headings + `ID [status] Title` lines) after Description. Enhance Parent display with resolved title. Update `loadTickets()` to return both filtered items and all tickets in `ticketsLoadedMsg`. All existing tests must pass (iteration 2)
 - [ ] Enrich the list panel with status and priority indicators. Update `renderTicketList()` to show `ID [P<n>][status] Title` per line. Color-code priority (P0-P1 red, P2 yellow, P3-P4 muted) and status (in_progress green, open default, closed muted). Adjust `maxTitleLen` for the wider prefix. Update both normal and selected line styles. Add priority/status styles to `styles.go`. All existing tests must pass
 - [ ] Add view modes to switch between all-open, ready, blocked, and closed ticket lists. Add `viewMode` enum (`viewAll`, `viewReady`, `viewBlocked`, `viewClosed`) to Model. Add keybindings `1`/`2`/`3`/`4` to switch views. `loadTickets()` stores all tickets; new `applyView()` filters `items` based on `viewMode` using the same logic as `cmd/ready.go` (statusMap, dep checking), `cmd/blocked.go` (unclosed deps), and `cmd/closed.go` (status==closed, sorted by mtime via `os.Stat`). Ready/blocked sort by priority then ID. Show current view in panel title: `"Tickets [All]"`, `"Tickets [Ready]"`, etc. Update status bar with `1-4` hints. All existing tests must pass
 - [ ] Add status management keybindings. In list panel, add `s` (start → `tickets.SetStatus(dir, id, "in_progress")`), `c` (close → `tickets.SetStatus(dir, id, "closed")`), `r` (reopen → `tickets.SetStatus(dir, id, "open")`). Each returns `actionDoneMsg` with message like `"Started: title"`. Update `d` help text from `"done"` to `"close"`. All existing tests must pass
@@ -60,9 +60,16 @@ Update the bubbletea TUI (`internal/tui/`) to reflect all features added across 
 
 - Design/Acceptance sections render markdown inline without caching (only Description uses the markdown cache) — this keeps complexity low and can be optimized later if needed
 - `renderMarkdown()` already exists and works well for rendering Design/Acceptance alongside Description
+- `ComputeRelations()` requires the full unfiltered ticket list to resolve relationships correctly — storing `allTickets` separately from the filtered `items` is necessary
+- `loadTickets()` can return both filtered and unfiltered lists in the same message struct, keeping the async pattern clean
+- Relationship sections reuse existing styles (`ticketIDStyle`, `mutedStyle`, `metaValueStyle`, `sectionHeadingStyle`) — no new styles needed
 
 ## History
 
 ### Iteration 1: Enrich TUI detail panel with all ticket metadata
 - **Commit**: 546cf84
 - **Summary**: Rewrote `updateDetailContent()` in `internal/tui/tui.go` to display all 15 ticket fields. Added 3 new styles (`metaLabelStyle`, `metaValueStyle`, `sectionHeadingStyle`) in `internal/tui/styles.go`. Status always shown (defaults to "open"), Priority always shown as `P<n>`, other string/slice fields shown conditionally. Design and Acceptance rendered as markdown sections before Description. All 93 unit tests and 211 bats integration tests pass.
+
+### Iteration 2: Add computed relationships to TUI detail panel
+- **Commit**: c00c3dc
+- **Summary**: Added `allTickets` field to Model struct and updated `ticketsLoadedMsg`/`loadTickets()` to carry both filtered and unfiltered ticket lists. Enhanced Parent display to show resolved `ID (Title)` using `ComputeRelations()`. Added Blockers, Blocking, Children, Linked sections after Description with styled `ID [status] Title` lines. Added `renderRelationSection` and `renderRelationLine` helper methods on `*Model`. All 93 unit tests and 211 bats integration tests pass.
