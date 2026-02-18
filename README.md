@@ -178,6 +178,22 @@ The `validateToken` function doesn't handle expired tokens.
 EOF
 ```
 
+### Edit a ticket
+
+```bash
+todo edit aBc
+```
+
+Opens the ticket file in your `$EDITOR` (defaults to `vi` if not set). Supports partial ID matching.
+
+When stdout is not a terminal (e.g. in a script or pipe), the file path is printed instead of launching an editor:
+
+```bash
+# Get the file path for scripting
+path=$(todo edit aBc)
+echo "$path"  # docs/tickets/aBc.md
+```
+
 ### Complete a ticket
 
 ```bash
