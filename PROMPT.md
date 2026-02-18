@@ -52,7 +52,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - [x] Add blocked command: show open/in_progress tickets with unclosed deps, show only unclosed blockers in output, support assignee/tag filters. Add bats tests (iteration 14)
 - [x] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests (iteration 15)
 - [x] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section (iteration 16)
-- [ ] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests
+- [x] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests (iteration 17)
 - [ ] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests
 - [ ] Add query command: output all tickets as JSONL with all frontmatter fields, support `--status`, `--type`, `--assignee`, `--tag` filters. Go-native implementation. Add bats tests for JSONL validity, field presence, filtering, and empty output
 
@@ -106,6 +106,9 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - Relations logic placed in `internal/tickets/relations.go` for testability — `ComputeRelations()` takes a ticket and all tickets, returns `TicketRelations` struct with resolved Blockers, Blocking, Children, Linked, and ParentTicket
 - Parent line enhanced via `strings.Replace` on existing `FullString()` output rather than modifying `FullString()` itself — keeps data layer formatting unchanged while enriching the display
 - Pager support uses `TODO_PAGER` env var (not `PAGER`) with TTY detection via `golang.org/x/term.IsTerminal` — only pipes through pager when stdout is a terminal; falls back to direct stdout if pager fails to start
+- `AddNote()` checks `strings.Contains(t.Description, "## Notes")` to decide whether to create or append — avoids duplicating the `## Notes` header on multiple note additions
+- Note timestamp format uses bold markdown (`**2006-01-02 15:04 UTC**`) with `time.Now().UTC()` — always UTC for consistency across timezones
+- Stdin detection for `add-note` uses `os.Stdin.Stat()` checking `ModeCharDevice` flag — same pattern as `set-description`; text from positional arg takes precedence over stdin
 
 ## History
 
@@ -123,6 +126,11 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/id-only-filenames-and-parse-yaml
 - **PR**: #4 (merged)
 - **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
+
+### Iteration 17: Add-note command for appending timestamped notes
+- **Branch**: ralph/add-note-command
+- **PR**: #18 (merged)
+- **Summary**: Added `AddNote(dir, id, text string)` to `internal/tickets/file.go` — finds ticket via `findTicketFile`, appends `**<timestamp>**\n\n<text>` under `## Notes` section (creates header if missing, reuses if exists). Created `cmd/add_note.go` with `cobra.RangeArgs(1, 2)`, supports text from positional arg or stdin pipe. Added 5 unit tests in `file_test.go` (`TestAddNote`, `TestAddNoteToExistingDescription`, `TestAddNoteMultiple`, `TestAddNoteEmptyDescription`, `TestAddNoteNotFound`). Created `test/add_note.bats` with 9 integration tests (basic add, positional arg, stdin pipe, append to existing description, no duplicate header, timestamp verification, nonexistent ticket, no text error, partial ID). Updated README.md and CHANGELOG.md. All 93 unit tests and 191 bats tests pass.
 
 ### Iteration 16: Show command with computed relationships and pager support
 - **Branch**: ralph/show-relations-and-pager
