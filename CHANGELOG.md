@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo start <id>` — shortcut to set status to `in_progress`
 - `todo close <id>` — shortcut to set status to `closed`
 - `todo reopen <id>` — shortcut to set status to `open`
+- Partial ID matching: all commands accepting a ticket ID now support substring matching (exact match takes precedence; ambiguous matches produce an error)
 
 ### Changed
 
