@@ -189,6 +189,21 @@ Cycle: aBc -> xYz -> aBc
 
 Closed tickets are excluded from the analysis. If no cycles are found, the command produces no output.
 
+### Manage links
+
+```bash
+# Link two tickets bidirectionally (both files updated)
+todo link aBc xYz
+
+# Link three or more tickets (all pairs linked)
+todo link aBc xYz qRs
+
+# Remove a link between two tickets (both sides removed)
+todo unlink aBc xYz
+```
+
+Both commands validate that the referenced tickets exist. Operations are idempotent — adding an existing link or removing a non-existent one succeeds silently. Partial ID matching is supported.
+
 ### Interactive TUI
 
 ```bash

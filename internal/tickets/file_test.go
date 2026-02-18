@@ -727,6 +727,218 @@ func TestRemoveDepTicketNotFound(t *testing.T) {
 	}
 }
 
+func TestAddLink(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	err = AddLink(dir, []string{a.ID, b.ID})
+	if err != nil {
+		t.Fatalf("AddLink: %v", err)
+	}
+
+	// Both tickets should have each other in links
+	loadedA, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show A: %v", err)
+	}
+	if len(loadedA.Links) != 1 || loadedA.Links[0] != b.ID {
+		t.Errorf("A.Links = %v, want [%s]", loadedA.Links, b.ID)
+	}
+
+	loadedB, err := Show(dir, b.ID)
+	if err != nil {
+		t.Fatalf("Show B: %v", err)
+	}
+	if len(loadedB.Links) != 1 || loadedB.Links[0] != a.ID {
+		t.Errorf("B.Links = %v, want [%s]", loadedB.Links, a.ID)
+	}
+}
+
+func TestAddLinkThreeTickets(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+	c, err := Add(dir, &Ticket{Title: "Ticket C"})
+	if err != nil {
+		t.Fatalf("Add C: %v", err)
+	}
+
+	err = AddLink(dir, []string{a.ID, b.ID, c.ID})
+	if err != nil {
+		t.Fatalf("AddLink: %v", err)
+	}
+
+	// A should link to B and C
+	loadedA, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show A: %v", err)
+	}
+	if len(loadedA.Links) != 2 {
+		t.Errorf("A.Links len = %d, want 2", len(loadedA.Links))
+	}
+
+	// B should link to A and C
+	loadedB, err := Show(dir, b.ID)
+	if err != nil {
+		t.Fatalf("Show B: %v", err)
+	}
+	if len(loadedB.Links) != 2 {
+		t.Errorf("B.Links len = %d, want 2", len(loadedB.Links))
+	}
+
+	// C should link to A and B
+	loadedC, err := Show(dir, c.ID)
+	if err != nil {
+		t.Fatalf("Show C: %v", err)
+	}
+	if len(loadedC.Links) != 2 {
+		t.Errorf("C.Links len = %d, want 2", len(loadedC.Links))
+	}
+}
+
+func TestAddLinkIdempotent(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	// Link twice — should be idempotent
+	AddLink(dir, []string{a.ID, b.ID})
+	err = AddLink(dir, []string{a.ID, b.ID})
+	if err != nil {
+		t.Fatalf("AddLink (second): %v", err)
+	}
+
+	loadedA, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show A: %v", err)
+	}
+	if len(loadedA.Links) != 1 {
+		t.Errorf("A.Links len = %d, want 1 (should not duplicate)", len(loadedA.Links))
+	}
+
+	loadedB, err := Show(dir, b.ID)
+	if err != nil {
+		t.Fatalf("Show B: %v", err)
+	}
+	if len(loadedB.Links) != 1 {
+		t.Errorf("B.Links len = %d, want 1 (should not duplicate)", len(loadedB.Links))
+	}
+}
+
+func TestAddLinkTicketNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+
+	err = AddLink(dir, []string{a.ID, "zzz"})
+	if err == nil {
+		t.Error("AddLink with non-existent ticket should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestRemoveLink(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	AddLink(dir, []string{a.ID, b.ID})
+
+	err = RemoveLink(dir, a.ID, b.ID)
+	if err != nil {
+		t.Fatalf("RemoveLink: %v", err)
+	}
+
+	// Both should have empty links
+	loadedA, err := Show(dir, a.ID)
+	if err != nil {
+		t.Fatalf("Show A: %v", err)
+	}
+	if len(loadedA.Links) != 0 {
+		t.Errorf("A.Links len = %d, want 0", len(loadedA.Links))
+	}
+
+	loadedB, err := Show(dir, b.ID)
+	if err != nil {
+		t.Fatalf("Show B: %v", err)
+	}
+	if len(loadedB.Links) != 0 {
+		t.Errorf("B.Links len = %d, want 0", len(loadedB.Links))
+	}
+}
+
+func TestRemoveLinkIdempotent(t *testing.T) {
+	dir := tempDir(t)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+	b, err := Add(dir, &Ticket{Title: "Ticket B"})
+	if err != nil {
+		t.Fatalf("Add B: %v", err)
+	}
+
+	// Remove link that was never added — should succeed (idempotent)
+	err = RemoveLink(dir, a.ID, b.ID)
+	if err != nil {
+		t.Fatalf("RemoveLink (not present): %v", err)
+	}
+}
+
+func TestRemoveLinkTicketNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	a, err := Add(dir, &Ticket{Title: "Ticket A"})
+	if err != nil {
+		t.Fatalf("Add A: %v", err)
+	}
+
+	err = RemoveLink(dir, a.ID, "zzz")
+	if err == nil {
+		t.Error("RemoveLink with non-existent ticket should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestFindTicketFilePartialPrefix(t *testing.T) {
 	dir := tempDir(t)
 	EnsureDir(dir)
