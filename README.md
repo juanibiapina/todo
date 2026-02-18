@@ -87,6 +87,21 @@ IDs are color-coded (magenta) when output is a terminal.
 todo show aBc
 ```
 
+### Partial ID matching
+
+All commands that accept a ticket ID support partial matching. You can use any unique substring of the ID:
+
+```bash
+# These all work if "aBc" is the only ticket containing "aB"
+todo show aB
+todo done aB
+todo start aB
+todo status aB in_progress
+todo set-description aB 'Updated description'
+```
+
+Exact matches always take precedence. If a partial ID matches multiple tickets, an error lists the ambiguous IDs.
+
 ### Set description
 
 ```bash

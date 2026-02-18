@@ -569,3 +569,105 @@ func TestParseFileDescriptionWithDashes(t *testing.T) {
 		t.Errorf("Description = %q, want %q", loaded.Description, original.Description)
 	}
 }
+
+func TestFindTicketFilePartialPrefix(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	writeFile(dir, &Ticket{ID: "aBc", Title: "Prefix test"})
+
+	// "aB" is a prefix of "aBc" — should match
+	loaded, err := Show(dir, "aB")
+	if err != nil {
+		t.Fatalf("Show with prefix: %v", err)
+	}
+	if loaded.ID != "aBc" {
+		t.Errorf("ID = %q, want %q", loaded.ID, "aBc")
+	}
+}
+
+func TestFindTicketFilePartialSuffix(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	writeFile(dir, &Ticket{ID: "aBc", Title: "Suffix test"})
+
+	// "Bc" is a suffix of "aBc" — should match
+	loaded, err := Show(dir, "Bc")
+	if err != nil {
+		t.Fatalf("Show with suffix: %v", err)
+	}
+	if loaded.ID != "aBc" {
+		t.Errorf("ID = %q, want %q", loaded.ID, "aBc")
+	}
+}
+
+func TestFindTicketFilePartialSubstring(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	writeFile(dir, &Ticket{ID: "xYz", Title: "Substring test"})
+
+	// "Y" is a substring of "xYz" — should match
+	loaded, err := Show(dir, "Y")
+	if err != nil {
+		t.Fatalf("Show with substring: %v", err)
+	}
+	if loaded.ID != "xYz" {
+		t.Errorf("ID = %q, want %q", loaded.ID, "xYz")
+	}
+}
+
+func TestFindTicketFileAmbiguous(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	writeFile(dir, &Ticket{ID: "aXb", Title: "First"})
+	writeFile(dir, &Ticket{ID: "cXd", Title: "Second"})
+
+	// "X" matches both "aXb" and "cXd" — should error
+	_, err := Show(dir, "X")
+	if err == nil {
+		t.Fatal("Show with ambiguous partial should fail")
+	}
+	if !strings.Contains(err.Error(), "ambiguous ticket ID") {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "aXb") || !strings.Contains(err.Error(), "cXd") {
+		t.Errorf("error should list matching IDs: %v", err)
+	}
+}
+
+func TestFindTicketFileExactPrecedence(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	// Create ticket "ab" and ticket "abc"
+	// Searching for "ab" should exact-match "ab", not partially match both
+	writeFile(dir, &Ticket{ID: "ab", Title: "Exact"})
+	writeFile(dir, &Ticket{ID: "abc", Title: "Longer"})
+
+	loaded, err := Show(dir, "ab")
+	if err != nil {
+		t.Fatalf("Show with exact match: %v", err)
+	}
+	if loaded.ID != "ab" {
+		t.Errorf("ID = %q, want %q (exact match should take precedence)", loaded.ID, "ab")
+	}
+}
+
+func TestFindTicketFileNotFound(t *testing.T) {
+	dir := tempDir(t)
+	EnsureDir(dir)
+
+	writeFile(dir, &Ticket{ID: "aBc", Title: "Exists"})
+
+	// "ZZZ" matches nothing
+	_, err := Show(dir, "ZZZ")
+	if err == nil {
+		t.Fatal("Show with non-matching partial should fail")
+	}
+	if !strings.Contains(err.Error(), "ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}

@@ -27,16 +27,53 @@ func ticketFilePath(dir, id string) string {
 	return filepath.Join(DirPath(dir), ticketFileName(id))
 }
 
-// findTicketFile finds a ticket file by ID using exact match.
+// findTicketFile finds a ticket file by ID.
+// It tries an exact match first, then falls back to partial (substring) matching.
+// Returns an error if zero or multiple tickets match a partial ID.
 func findTicketFile(dir, id string) (string, error) {
+	// Try exact match first
 	path := ticketFilePath(dir, id)
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+
+	// Fall back to partial matching: scan all .md files
+	ticketsDir := DirPath(dir)
+	entries, err := os.ReadDir(ticketsDir)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("ticket not found: %s", id)
 		}
 		return "", err
 	}
-	return path, nil
+
+	var matches []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		ticketID := strings.TrimSuffix(entry.Name(), ".md")
+		if strings.Contains(ticketID, id) {
+			matches = append(matches, filepath.Join(ticketsDir, entry.Name()))
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("ticket not found: %s", id)
+	case 1:
+		return matches[0], nil
+	default:
+		// Extract IDs from matched paths for the error message
+		var ids []string
+		for _, m := range matches {
+			ids = append(ids, strings.TrimSuffix(filepath.Base(m), ".md"))
+		}
+		sort.Strings(ids)
+		return "", fmt.Errorf("ambiguous ticket ID %q: matches %s", id, strings.Join(ids, ", "))
+	}
 }
 
 // parseFile reads a single ticket file and returns the ticket.
