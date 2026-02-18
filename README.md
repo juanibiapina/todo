@@ -75,11 +75,47 @@ todo add -t epic -p 1
 
 ```bash
 todo list
-# aBc Fix login timeout
-# xYz Refactor auth module
+# aBc - Fix login timeout
+# xYz [in_progress] - Refactor auth module <- [qRs, mNp]
 ```
 
-IDs are color-coded (magenta) when output is a terminal.
+Output format: `id [status] - Title <- [dep1, dep2]`. The `[status]` portion is omitted when empty, and `<- [deps]` is omitted when there are no dependencies. IDs are color-coded (magenta) when output is a terminal.
+
+By default, closed tickets are hidden. Use `--status` to filter by status:
+
+```bash
+# Show only in-progress tickets
+todo list --status in_progress
+
+# Show closed tickets
+todo list --status closed
+
+# Show open tickets (includes newly created tickets with no status set)
+todo list --status open
+```
+
+Filter by assignee or tag:
+
+```bash
+# Filter by assignee
+todo list -a Alice
+
+# Filter by tag
+todo list -T urgent
+
+# Combine filters (AND logic)
+todo list --status open -a Alice -T auth
+```
+
+**Flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--status` | | Filter by status: `open`, `in_progress`, `closed` |
+| `--assignee` | `-a` | Filter by assignee |
+| `--tag` | `-T` | Filter by tag |
+
+An empty result produces no output.
 
 ### Show a ticket
 

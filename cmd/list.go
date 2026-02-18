@@ -11,8 +11,8 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all tickets",
-	Long: `List all tickets with their ID and title.`,
-	Args: cobra.NoArgs,
+	Long:  `List all tickets with their ID and title.`,
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
 		if err != nil {
@@ -24,17 +24,49 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		// Filter out closed tickets
+		statusFilter, _ := cmd.Flags().GetString("status")
+		assigneeFilter, _ := cmd.Flags().GetString("assignee")
+		tagFilter, _ := cmd.Flags().GetString("tag")
+
 		var items []*tickets.Ticket
 		for _, t := range allItems {
-			if t.Status != "closed" {
-				items = append(items, t)
+			// Default behavior: hide closed tickets unless --status is specified
+			if statusFilter == "" && t.Status == "closed" {
+				continue
 			}
-		}
 
-		if len(items) == 0 {
-			fmt.Println("No tickets")
-			return nil
+			// Apply --status filter
+			// "open" matches both explicit "open" and empty status (default)
+			if statusFilter != "" {
+				if statusFilter == "open" {
+					if t.Status != "" && t.Status != "open" {
+						continue
+					}
+				} else if t.Status != statusFilter {
+					continue
+				}
+			}
+
+			// Apply --assignee filter
+			if assigneeFilter != "" && t.Assignee != assigneeFilter {
+				continue
+			}
+
+			// Apply --tag filter
+			if tagFilter != "" {
+				found := false
+				for _, tag := range t.Tags {
+					if tag == tagFilter {
+						found = true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
+			}
+
+			items = append(items, t)
 		}
 
 		for _, t := range items {
@@ -46,5 +78,8 @@ var listCmd = &cobra.Command{
 }
 
 func init() {
+	listCmd.Flags().String("status", "", "Filter by status (open, in_progress, closed)")
+	listCmd.Flags().StringP("assignee", "a", "", "Filter by assignee")
+	listCmd.Flags().StringP("tag", "T", "", "Filter by tag")
 	rootCmd.AddCommand(listCmd)
 }
