@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -113,6 +114,10 @@ type actionDoneMsg struct {
 	isError bool
 }
 
+type editorFinishedMsg struct {
+	err error
+}
+
 // Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(m.loadTickets(), tickCmd())
@@ -155,6 +160,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = msg.message
 		m.isError = msg.isError
 		m.messageTime = time.Now()
+		return m, m.loadTickets()
+
+	case editorFinishedMsg:
+		if msg.err != nil {
+			m.message = fmt.Sprintf("Editor error: %v", msg.err)
+			m.isError = true
+			m.messageTime = time.Now()
+		}
 		return m, m.loadTickets()
 
 	case tea.KeyMsg:
@@ -569,6 +582,11 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.reopenTicket(m.items[m.scroll.Cursor].ID)
 		}
 
+	case "e":
+		if len(m.items) > 0 {
+			return m, m.editTicket(m.items[m.scroll.Cursor].ID)
+		}
+
 	case " ":
 		if len(m.items) > 0 {
 			return m, m.copyTicket(m.items[m.scroll.Cursor])
@@ -662,7 +680,17 @@ func (m Model) reopenTicket(id string) tea.Cmd {
 	}
 }
 
-
+func (m Model) editTicket(id string) tea.Cmd {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+	ticketPath := filepath.Join(tickets.DirPath(m.dir), id+".md")
+	cmd := exec.Command(editor, ticketPath)
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return editorFinishedMsg{err: err}
+	})
+}
 
 func (m Model) copyTicket(t *tickets.Ticket) tea.Cmd {
 	return func() tea.Msg {
