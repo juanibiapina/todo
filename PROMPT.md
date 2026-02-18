@@ -1,214 +1,68 @@
-# Todo Feature Parity with wedow/ticket
+# TUI Feature Parity Update
 
 ## Goal
 
-Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's unique features (TUI, quick-add, set-description, color output). Add comprehensive bats integration tests matching wedow/ticket's BDD coverage.
+Update the bubbletea TUI (`internal/tui/`) to reflect all features added across 19 CLI iterations: rich metadata display, computed relationships, view modes (all/ready/blocked/closed), status management actions, edit-in-editor, add-note, add-with-defaults, and updated help. The TUI currently only shows ID+Title in the list and ID+Title+Description in detail, with add (title-only) and done as the only actions.
 
 ## Context
 
-**Current state:** Go CLI tool (`github.com/juanibiapina/todo`) using cobra for commands, with bubbletea TUI. Has `add`, `done`, `list`, `show`, `set-description`, `quick-add`, and `tui` commands. Tickets stored as markdown in `docs/tickets/` with format `# Title\n---\nid: XXX\n---\nDescription`. Files named `<id>-<slug>.md` with 3-char random base62 IDs.
+**Current TUI state** (`internal/tui/tui.go`, `styles.go`, `scroll.go`, `ansi.go`):
+- Split-panel layout: left list panel + right detail viewport (bubbletea `viewport.Model`)
+- List shows `ID Title` per line with cursor selection and scroll
+- Detail shows Title (bold), ID, and glamour-rendered Description — no other metadata
+- Actions: `a` add (title-only modal), `d` done (calls `tickets.Done()`), `space` copy to clipboard
+- `loadTickets()` calls `tickets.List()` and filters out `Status == "closed"` — stores only the filtered subset
+- Help modal and status bar reflect only the three actions above
+- Modals: `modalAdd` (textinput) and `modalHelp` — overlay system via `placeOverlay()`
+- Styles in `styles.go`: ANSI 0-15 colors, semantic aliases, lipgloss styles for selection, dialogs, help keys
+- `tickMsg` triggers reload every 500ms
 
-**Technologies:** Go 1.25, cobra CLI, bubbletea/lipgloss TUI, bats integration tests, go test unit tests. Build via Makefile (`make test` runs both).
+**CLI features now available** (from 19 iterations):
+- Ticket struct has 15 fields: Title, ID, Description, Status, Type, Priority, Assignee, Created, Parent, ExternalRef, Design, Acceptance, Deps, Links, Tags
+- `tickets.ComputeRelations(ticket, allTickets)` returns `TicketRelations` with Blockers, Blocking, Children, Linked, ParentTicket (from `internal/tickets/relations.go`)
+- `tickets.SetStatus(dir, id, status)` for status changes (open/in_progress/closed)
+- `tickets.AddNote(dir, id, text)` for appending timestamped notes
+- `tickets.Add(dir, *Ticket)` accepts full Ticket struct — CLI defaults: type=task, priority=2, assignee=git user.name
+- `tea.ExecProcess()` available in bubbletea for suspending TUI to launch external processes like `$EDITOR`
+- Ready/blocked/closed filtering logic exists in `cmd/ready.go`, `cmd/blocked.go`, `cmd/closed.go` — uses statusMap pattern over `tickets.List()` results
 
-**Key files:**
-- `internal/tickets/ticket.go` — Ticket struct (Title, ID, Description)
-- `internal/tickets/file.go` — File I/O, List, Add, Show, Done, SetDescription
-- `internal/tickets/id.go` — 3-char base62 ID generation
-- `cmd/*.go` — cobra commands
-- `test/*.bats` — integration tests
+**Technologies:** Go 1.25, bubbletea/bubbles/lipgloss TUI, glamour markdown rendering, `golang.org/x/term`. Build via `make` (runs `go test` + bats).
 
-**Design decisions:**
-- `done` → sets status=closed (no file deletion)
-- File format → standard YAML frontmatter first (`--- YAML --- # Title`)
-- File naming → `<id>.md` only (no slug)
-- ID format → 3-char random base62 IDs (current format)
-- Plugin system → skip
-- Query → Go-native JSON with built-in filtering
-- Tickets directory → keep `docs/tickets/`
+**Test baseline:** 93 unit tests, 211 bats integration tests — all passing. TUI is not directly tested by bats but `cmd/tui.go` long description appears in `--help` output.
 
 ## Requirements
 
-- Maintain backward compatibility with existing TUI, quick-add, set-description, and color output features
-- All new features must have bats integration tests
-- Existing tests must be updated to match new formats
-- File format changes must be applied consistently across all commands
-- ID resolution must support partial matching across all commands
+- All existing tests must continue to pass after each step (`gob run make`)
+- TUI detail panel must show all ticket metadata fields and computed relationships (matching CLI `show` output)
+- TUI list panel must show status and priority indicators (matching CLI `list`/`ready` output patterns)
+- TUI must support switching between view modes: all open, ready, blocked, closed (matching the 4 CLI listing commands)
+- Status management (`s` start, `c` close, `r` reopen) must be available from TUI matching CLI `start`/`close`/`reopen`
+- Edit-in-editor (`e`) must suspend TUI using `tea.ExecProcess`, matching CLI `edit` behavior
+- Add-note (`n`) must use a text input modal, calling `tickets.AddNote()`
+- Add modal must apply same defaults as CLI add command (type=task, priority=2, assignee=git user.name)
+- Help modal, status bar, and `cmd/tui.go` long description must reflect all new keybindings
+- Update README.md "Interactive TUI" section and CHANGELOG.md with TUI enhancements
 
 ## Steps
 
-- [x] Update Ticket struct to add new fields (Status, Deps, Links, Created, Type, Priority, Assignee, ExternalRef, Parent, Tags) and change FullString() to write YAML-frontmatter-first format (`--- YAML --- # Title\nDescription`). Add unit tests for the new format (iteration 1)
-- [x] Keep 3-char random base62 ID generation (current format). No changes needed to id.go. Verify existing unit tests cover ID uniqueness and format (iteration 2)
-- [x] Change file naming from `<id>-<slug>.md` to `<id>.md`. Remove slugify(), update ticketFileName/ticketFilePath, update findTicketFile for exact match, update parseFile/writeFile for YAML-first frontmatter format. Update file_test.go unit tests (iteration 3)
-- [x] Update all commands (add, done, show, list, set-description, format) to work with the new file format, naming, and ID generation. Update all existing bats tests to match new output format, ID patterns, and done behavior (status=closed instead of delete) (iteration 4)
-- [x] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values (iteration 5)
-- [x] Add status management commands: `status <id> <status>` (validate open|in_progress|closed), `start <id>`, `close <id>`, `reopen <id>` shortcuts. Change `done` to set status=closed instead of deleting. Add bats tests for each command, invalid status, and non-existent ticket errors (iteration 6)
-- [x] Enhance findTicketFile with partial ID resolution: exact match first, then glob `*<id>*.md`, error on ambiguous matches. Apply to all commands that take an ID. Add bats tests for exact/prefix/suffix/substring matches, ambiguous errors, and exact precedence (iteration 7)
-- [x] Add dep/undep commands for dependency management: `dep <id> <dep-id>` (idempotent, validates both exist), `undep <id> <dep-id>`. Store deps as YAML array. Add bats tests for add/remove, idempotency, and validation errors (iteration 8)
-- [x] Add dep tree command with box-drawing output (`├── `, `└── `, `│   `), `--full` flag for no dedup, `[status]` and title per node, sorted by subtree depth then ID, cycle-safe. Add bats tests for tree format, sorting, cycles, and full mode (iteration 9)
-- [x] Add dep cycle command: DFS-based cycle detection on open tickets, output normalized cycles with member details. Add bats tests (iteration 10)
-- [x] Add link/unlink commands for bidirectional linking: `link <id> <id> [id...]` updates all involved files (idempotent), `unlink <id> <target-id>` removes from both. Add bats tests for bidirectional links, 3+ tickets, idempotency, and unlink (iteration 11)
-- [x] Enhance list command with `--status`, `-a/--assignee`, `-T/--tag` filters. Show deps in output: `id [status] - Title <- [dep1, dep2]`. Empty list returns nothing instead of "No tickets". Add bats tests for all filter combinations (iteration 12)
-- [x] Add ready command: show open/in_progress tickets with all deps closed or no deps, sorted by priority then ID, format `id [P2][open] - Title`, support assignee/tag filters. Add bats tests (iteration 13)
-- [x] Add blocked command: show open/in_progress tickets with unclosed deps, show only unclosed blockers in output, support assignee/tag filters. Add bats tests (iteration 14)
-- [x] Add closed command: show recently closed tickets sorted by mtime, `--limit=N` (default 20), support assignee/tag filters. Add bats tests (iteration 15)
-- [x] Enhance show command to compute relationships by loading all tickets: append Blockers (unclosed deps), Blocking (reverse deps), Children (parent matches), and Linked sections. Enhance parent line with title. Support `TODO_PAGER` env var. Add bats tests for each computed section (iteration 16)
-- [x] Add add-note command: `add-note <id> [text]` appends `## Notes` section if missing, then `**<timestamp>**\n\n<text>`, support stdin pipe. Add bats tests (iteration 17)
-- [x] Add edit command: `edit <id>` opens ticket in `$EDITOR` (default vi), print file path if non-TTY. Add bats tests (iteration 18)
-- [x] Add query command: output all tickets as JSONL with all frontmatter fields, support `--status`, `--type`, `--assignee`, `--tag` filters. Go-native implementation. Add bats tests for JSONL validity, field presence, filtering, and empty output (iteration 19)
+- [x] Enrich the detail panel with all ticket metadata fields. Show Status (display "open" when empty), Type, Priority, Assignee, Created, Parent, ExternalRef, Tags, Deps, Links after the ID line using styled labels. Show Design and Acceptance as labeled sections before Description. Keep existing glamour-rendered Description and markdown cache. Update `updateDetailContent()` in `internal/tui/tui.go`. All existing tests must pass (iteration 1)
+- [ ] Add computed relationships to the detail panel. Store the full unfiltered ticket list (`allTickets`) on the Model struct alongside the filtered `items`. In `updateDetailContent()`, call `tickets.ComputeRelations(ticket, m.allTickets)` and append Blockers, Blocking, Children, Linked sections (styled headings + `ID [status] Title` lines) after Description. Enhance Parent display with resolved title. Update `loadTickets()` to return both filtered items and all tickets in `ticketsLoadedMsg`. All existing tests must pass
+- [ ] Enrich the list panel with status and priority indicators. Update `renderTicketList()` to show `ID [P<n>][status] Title` per line. Color-code priority (P0-P1 red, P2 yellow, P3-P4 muted) and status (in_progress green, open default, closed muted). Adjust `maxTitleLen` for the wider prefix. Update both normal and selected line styles. Add priority/status styles to `styles.go`. All existing tests must pass
+- [ ] Add view modes to switch between all-open, ready, blocked, and closed ticket lists. Add `viewMode` enum (`viewAll`, `viewReady`, `viewBlocked`, `viewClosed`) to Model. Add keybindings `1`/`2`/`3`/`4` to switch views. `loadTickets()` stores all tickets; new `applyView()` filters `items` based on `viewMode` using the same logic as `cmd/ready.go` (statusMap, dep checking), `cmd/blocked.go` (unclosed deps), and `cmd/closed.go` (status==closed, sorted by mtime via `os.Stat`). Ready/blocked sort by priority then ID. Show current view in panel title: `"Tickets [All]"`, `"Tickets [Ready]"`, etc. Update status bar with `1-4` hints. All existing tests must pass
+- [ ] Add status management keybindings. In list panel, add `s` (start → `tickets.SetStatus(dir, id, "in_progress")`), `c` (close → `tickets.SetStatus(dir, id, "closed")`), `r` (reopen → `tickets.SetStatus(dir, id, "open")`). Each returns `actionDoneMsg` with message like `"Started: title"`. Update `d` help text from `"done"` to `"close"`. All existing tests must pass
+- [ ] Add edit-in-editor action. In list panel, add `e` keybinding that constructs `exec.Command(editor, ticketPath)` using `$EDITOR` (default `vi`) and returns `tea.ExecProcess(cmd, callback)`. Callback returns a message that triggers ticket reload. File path constructed as `tickets.DirPath(dir)/<id>.md`. All existing tests must pass
+- [ ] Add add-note modal. Add `modalNote` to `modalMode` enum. In list panel, `n` opens modal with text input (reuse `textInput` pattern from add modal). On enter, call `tickets.AddNote(dir, id, text)` and return `actionDoneMsg`. Modal title: "Add Note", help: "enter: save • esc: cancel". All existing tests must pass
+- [ ] Apply CLI defaults in add modal. When creating a ticket via the add modal, construct `tickets.Ticket{Title: title, Type: "task", Priority: 2, Assignee: gitUserName}` where `gitUserName` is resolved from `git config user.name` (same as `cmd/add.go`). Fall back to empty assignee if git command fails. All existing tests must pass
+- [ ] Update help modal, status bar, and `cmd/tui.go` long description. Help modal: add `s` start, `c` close, `r` reopen, `e` edit, `n` add note to Ticket List section; change `d` from "mark done (remove)" to "close"; add Views section with `1`/`2`/`3`/`4` keys. Status bar: add key hints for new actions (context-dependent per panel). Update `cmd/tui.go` Long description with complete keybinding reference. All existing tests must pass
+- [ ] Update README.md "Interactive TUI" section to document view modes, all keybindings, metadata display, and relationship sections. Add CHANGELOG.md entry under `[Unreleased]` for TUI enhancements. All existing tests must pass
 
 ## Learnings
 
-- Used a separate `frontmatter` helper struct to exclude Title and Description from YAML marshaling — they render in the markdown body instead
-- `omitempty` on all YAML fields except `id` keeps output minimal; priority=0 is omitted which is acceptable since step 5 sets default priority=2
-- `gopkg.in/yaml.v3` added as dependency for proper YAML serialization
-- `generateID()` and `generateUniqueID()` are unexported — tests must be in `package tickets` (same package) to access them directly
-- Only prior ID test coverage was a `len(ticket.ID) != 3` check in `file_test.go` — dedicated `id_test.go` now provides comprehensive coverage
-- `findTicketFile()` simplified from glob to exact `os.Stat()` — more efficient since filename is deterministic from ID (`<id>.md`)
-- `SetDescription()` no longer needs file rename since filename doesn't depend on title — just overwrites in place
-- Search for `\n---\n` as closing frontmatter delimiter correctly handles descriptions containing `---` on their own line
-- `Done()` sets `t.Status = "closed"` then calls `writeFile()` — preserves ticket data on disk instead of deleting
-- `List()` remains a pure data function returning all tickets (including closed); filtering happens in `cmd/list.go` and `internal/tui/tui.go` — keeps the data layer flexible for future `--status` filtering and `closed` command
-- Most commands (add, show, set-description, format) needed no changes for step 4 — they already worked with the new YAML frontmatter format from iterations 1-3
-- Refactored `Add()` to accept `*Ticket` struct instead of individual parameters — cleaner API that avoids parameter explosion as fields grow
-- Parent validation done in `Add()` data layer (not cobra command) — ensures consistency regardless of entry point (CLI, TUI, tests)
-- Description priority order: `-d` flag > positional arg > stdin — most explicit input wins
-- Default assignee uses `git config user.name`; detected via `cmd.Flags().Changed("assignee")` to only apply when flag not explicitly set
-- `SetStatus()` centralizes validation and status mutation at the library level using a `validStatuses` map — all 4 commands (status, start, close, reopen) delegate to it for consistent behavior
-- Shortcut commands (`start`, `close`, `reopen`) call `SetStatus()` with hardcoded status values rather than duplicating validation logic
-- `done` command left unchanged and coexists with `close` — both set status=closed, different output messages
-- `findTicketFile()` uses substring matching (`strings.Contains`) not just prefix — allows prefix, suffix, and interior substring matches on ticket IDs
-- No signature change to `findTicketFile` means all callers (show, done, close, start, reopen, status, set-description, parent validation) automatically get partial ID support without any code changes
-- Ambiguous match error uses `sort.Strings(ids)` for deterministic, testable error messages
-- `AddDep()` and `RemoveDep()` resolve partial IDs via `findTicketFile` and store the full resolved ID in the deps array — ensures consistent references even when users provide partial IDs
-- Both `AddDep` and `RemoveDep` are idempotent — `AddDep` checks existing deps before appending, `RemoveDep` filters without erroring if dep not present
-- Both ticket and dependency ticket must exist (validated via `findTicketFile`) before any modification — prevents dangling references in the deps array
-- Cobra routes subcommands before parent `Args` validation — `dep tree <id>` works alongside `dep <id> <dep-id>` without changing the parent command's `ExactArgs(2)`
-- Separate maps for cycle detection (ancestors — tracks current path, cleaned up via defer) vs dedup (visited — tracks all expanded nodes) — `--full` disables dedup only, not cycle detection, preventing infinite recursion
-- Children sorted by subtree depth descending then ID ascending — deeper branches appear first for visual clarity; `subtreeDepth()` recursion uses the same ticketMap for consistency
-- 3-color DFS (white/gray/black) is the standard directed-graph cycle detection algorithm — gray nodes on the current path indicate back-edges (cycles); path extraction via `extractCycle()` walks the stack from the gray node
-- Cycle normalization via rotation (smallest ID first) + deduplication via `strings.Join(normalized, ",")` as map key ensures deterministic, unique cycle output regardless of DFS traversal order
-- Closed tickets excluded at graph-building time — `ticketMap` only contains non-closed tickets, deps pointing to closed or non-existent tickets are skipped during DFS adjacency traversal
-- `AddLink` accepts `[]string` of IDs for 3+ ticket linking, creating all pairs in one call — differs from `AddDep` which is directional and takes exactly 2 IDs
-- Both `link` and `unlink` are bidirectional — they update all involved ticket files (both sides), unlike `dep`/`undep` which only modify the source ticket
-- `link` command uses `cobra.MinimumNArgs(2)` to support 3+ tickets; `unlink` uses `ExactArgs(2)` for simpler pairwise semantics
-- `--status open` must match both `Status == ""` and `Status == "open"` since newly created tickets have empty status — special-case equality check needed
-- `formatTicketLine()` uses `strings.Builder` for constructing output with optional status brackets and deps suffix — status/deps portions omitted entirely when empty, not shown as empty brackets
-- Removing "No tickets" message required updating `ticket_count()` helper in `test/test_helper.bash` to check `[[ -z "${output}" ]]` instead of matching the string
-- "Ready" definition: open/in_progress tickets with all deps closed or no deps — missing deps treated as non-blocking (if dep ID doesn't exist in ticket map, treated as closed/gone)
-- All `ready` command logic lives in `cmd/ready.go` with no library-level changes — reuses `tickets.List()` for data loading, builds a statusMap for dep resolution, then filters and sorts in-command
-- `formatReadyLine()` always shows priority (`[P<n>]`) and status (`[open]` for empty status) — differs from `formatTicketLine()` which omits empty status; empty status displayed as `[open]` for user clarity
-- `blocked` command is the inverse of `ready` — same filtering/sorting logic but selects tickets with ≥1 unclosed dep instead of all deps closed; `formatBlockedLine()` takes pre-computed unclosed blockers list to avoid re-computing in the formatter
-- Bats test assertion `refute_output --partial "${id}"` can false-match when the ID appears in another ticket's deps suffix (`<- [id]`) — safer to assert exact line count or use `refute_line` for such cases
-- `blocked` and `ready` commands share the same architectural pattern: no library-level changes, all logic in `cmd/*.go` reusing `tickets.List()` with in-command statusMap construction, filtering, and sorting
-- `closed` command uses file mtime via `os.Stat()` in the command layer for sorting — constructs path as `tickets.DirPath(dir)/<id>.md`, skips tickets where stat fails
-- Output format for `closed` omits `[closed]` status bracket since all displayed tickets are closed — simpler format `id - Title` via `formatClosedLine()`, unlike `formatReadyLine()`/`formatBlockedLine()` which always show status
-- `--limit` flag uses `-n` shorthand (matching common CLI conventions like `head -n`); sort-then-truncate ensures most recently closed tickets appear first
-- Relations logic placed in `internal/tickets/relations.go` for testability — `ComputeRelations()` takes a ticket and all tickets, returns `TicketRelations` struct with resolved Blockers, Blocking, Children, Linked, and ParentTicket
-- Parent line enhanced via `strings.Replace` on existing `FullString()` output rather than modifying `FullString()` itself — keeps data layer formatting unchanged while enriching the display
-- Pager support uses `TODO_PAGER` env var (not `PAGER`) with TTY detection via `golang.org/x/term.IsTerminal` — only pipes through pager when stdout is a terminal; falls back to direct stdout if pager fails to start
-- `AddNote()` checks `strings.Contains(t.Description, "## Notes")` to decide whether to create or append — avoids duplicating the `## Notes` header on multiple note additions
-- Note timestamp format uses bold markdown (`**2006-01-02 15:04 UTC**`) with `time.Now().UTC()` — always UTC for consistency across timezones
-- Stdin detection for `add-note` uses `os.Stdin.Stat()` checking `ModeCharDevice` flag — same pattern as `set-description`; text from positional arg takes precedence over stdin
-- `edit` command reuses `tickets.Show()` for partial ID resolution — no new library functions needed; file path constructed as `tickets.DirPath(dir)/<id>.md`
-- TTY detection via `term.IsTerminal(int(os.Stdout.Fd()))` consistent with `cmd/show.go` pager support — non-TTY prints file path for scripting (`path=$(todo edit aBc)`)
-- Bats `run` makes stdout non-TTY, so editor launch tested via `script -q /dev/null` to simulate a terminal with a marker-file editor; non-TTY path (file path printing) is naturally testable under `run`
-- `queryTicket` struct separate from `tickets.Ticket` — JSON-specific serialization concerns (`json:"external_ref,omitempty"`, nil-slice handling) kept in command layer rather than polluting the domain struct
-- Nil slices (`deps`, `links`, `tags`) must be initialized to `[]string{}` before JSON marshaling to serialize as `[]` not `null` — Go's `encoding/json` marshals nil slices as `null`
-- `--status open` special-casing reused from `list` command: checks `t.Status != "" && t.Status != "open"` to match newly created tickets with empty status as "open"
+- Design/Acceptance sections render markdown inline without caching (only Description uses the markdown cache) — this keeps complexity low and can be optimized later if needed
+- `renderMarkdown()` already exists and works well for rendering Design/Acceptance alongside Description
 
 ## History
 
-### Iteration 1: Ticket struct fields and YAML frontmatter FullString()
-- **Branch**: ralph/ticket-yaml-frontmatter
-- **PR**: #2 (merged)
-- **Summary**: Added 10 new fields to Ticket struct (Status, Type, Priority, Assignee, Created, Parent, ExternalRef, Deps, Links, Tags). Created `frontmatter` helper struct with YAML tags. Rewrote `FullString()` to output `---\nYAML\n---\n# Title\nDescription` format using `gopkg.in/yaml.v3`. Added 12 unit tests in `ticket_test.go`. `String()` method unchanged.
-
-### Iteration 2: ID generation test coverage
-- **Branch**: ralph/id-generation-tests
-- **PR**: #3 (merged)
-- **Summary**: Created `internal/tickets/id_test.go` with 6 test functions covering `generateID()` (length, base62 character set, randomness) and `generateUniqueID()` (empty map, collision avoidance, high-pressure with 1000 pre-populated IDs). No changes to `id.go` — verification only.
-
-### Iteration 3: ID-only filenames and YAML frontmatter parsing
-- **Branch**: ralph/id-only-filenames-and-parse-yaml
-- **PR**: #4 (merged)
-- **Summary**: Simplified file naming from `<id>-<slug>.md` to `<id>.md`. Removed `slugify()` and `regexp`/`bufio` imports. Simplified `findTicketFile()` to exact `os.Stat()` check. Rewrote `parseFile()` to read YAML-frontmatter-first format using `gopkg.in/yaml.v3` unmarshal into `frontmatter` struct, populating all 13 Ticket fields. Simplified `SetDescription()` to overwrite in place (no rename). Updated `file_test.go`: removed `TestSlugify`, rewrote `TestTicketFileName`/`TestFileFormat`/`TestDone`, added `TestParseFileRoundTripAllFields` and `TestParseFileDescriptionWithDashes`. Updated `README.md` and `CHANGELOG.md`. All 32 unit tests and 29 bats tests pass.
-
-### Iteration 19: Query command for JSONL ticket output with filters
-- **Branch**: ralph/query-command
-- **PR**: #20 (merged)
-- **Summary**: Created `cmd/query.go` with `queryTicket` struct (separate from `tickets.Ticket` for JSON-specific serialization), `toQueryTicket()` converter that initializes nil slices to `[]string{}` for proper JSON array output. Supports `--status`, `--type`, `-a/--assignee`, `-T/--tag` filters with AND logic. `--status open` matches empty status. JSONL output (one JSON object per line) using `encoding/json` from stdlib. Created `test/query.bats` with 13 integration tests covering empty output, valid JSONL, field presence, all frontmatter fields, arrays-not-null, deps/links, status/type/assignee/tag filters, combined filters, and description field. All 93 unit tests and 211 bats tests pass.
-
-### Iteration 18: Edit command to open ticket in $EDITOR
-- **Branch**: ralph/edit-command
-- **PR**: #19 (merged)
-- **Summary**: Created `cmd/edit.go` with `cobra.ExactArgs(1)` — uses `tickets.Show()` for partial ID resolution, `$EDITOR` env var with `vi` fallback, TTY detection via `golang.org/x/term.IsTerminal`. When stdout is TTY, launches editor with stdin/stdout/stderr connected; when non-TTY, prints file path for scripting. Created `test/edit.bats` with 7 integration tests covering non-TTY path print, partial ID resolution, nonexistent ticket error, EDITOR env var (via `script -q /dev/null` TTY simulation), file path correctness, file editability, and argument validation. Updated README.md and CHANGELOG.md. All 93 unit tests and 198 bats tests pass.
-
-### Iteration 17: Add-note command for appending timestamped notes
-- **Branch**: ralph/add-note-command
-- **PR**: #18 (merged)
-- **Summary**: Added `AddNote(dir, id, text string)` to `internal/tickets/file.go` — finds ticket via `findTicketFile`, appends `**<timestamp>**\n\n<text>` under `## Notes` section (creates header if missing, reuses if exists). Created `cmd/add_note.go` with `cobra.RangeArgs(1, 2)`, supports text from positional arg or stdin pipe. Added 5 unit tests in `file_test.go` (`TestAddNote`, `TestAddNoteToExistingDescription`, `TestAddNoteMultiple`, `TestAddNoteEmptyDescription`, `TestAddNoteNotFound`). Created `test/add_note.bats` with 9 integration tests (basic add, positional arg, stdin pipe, append to existing description, no duplicate header, timestamp verification, nonexistent ticket, no text error, partial ID). Updated README.md and CHANGELOG.md. All 93 unit tests and 191 bats tests pass.
-
-### Iteration 16: Show command with computed relationships and pager support
-- **Branch**: ralph/show-relations-and-pager
-- **PR**: #17 (merged)
-- **Summary**: Created `internal/tickets/relations.go` with `TicketRelations` struct, `ComputeRelations()`, `FormatRelations()`, `FormatParentLine()`, and `formatRelationLine()`. Blockers = unclosed deps only; Blocking = reverse deps when ticket is unclosed; Children = tickets with matching parent; Linked = resolved links. Missing dep/link IDs silently skipped. Created `internal/tickets/relations_test.go` with 15 unit tests. Rewrote `cmd/show.go` to load all tickets, compute relations, enhance parent line with title via `strings.Replace`, append formatted relation sections, and support `TODO_PAGER` env var with TTY detection (`golang.org/x/term`). Added 10 bats tests to `test/show.bats`. Fixed `test/dep.bats` and `test/link.bats` idempotent tests (frontmatter-only ID counting via `sed`). Promoted `golang.org/x/term` to direct dependency. All 88 unit tests and 182 bats tests pass.
-
-### Iteration 15: Closed command for recently closed tickets
-- **Branch**: ralph/closed-command
-- **PR**: #16 (merged)
-- **Summary**: Created `cmd/closed.go` with `cobra.NoArgs` — loads all tickets via `tickets.List()`, filters to `Status == "closed"`, stats files via `os.Stat()` for mtime, sorts descending (most recent first), truncates by `--limit/-n` (default 20). Supports `-a/--assignee` and `-T/--tag` flags. Added `formatClosedLine()` to `cmd/format.go` with simple `id - Title` format (no status bracket). Created `test/closed.bats` with 11 integration tests covering empty list, closed-only filtering, mtime sorting (using `touch -t`), limit flag, `-n` shorthand, assignee/tag filters, output format, and combined filters. Updated README.md and CHANGELOG.md. All 73 unit tests and 172 bats tests pass.
-
-### Iteration 14: Blocked command for tickets with unclosed dependencies
-- **Branch**: ralph/blocked-command
-- **PR**: #15 (merged)
-- **Summary**: Created `cmd/blocked.go` with `cobra.NoArgs` — loads all tickets via `tickets.List()`, builds statusMap, filters to open/in_progress tickets with ≥1 unclosed dependency (missing deps non-blocking), supports `-a/--assignee` and `-T/--tag` flags, sorts by priority ascending then ID ascending. Added `formatBlockedLine(t, unclosedBlockers)` to `cmd/format.go` with format `id [P<priority>][<status>] - Title <- [blocker1, blocker2]`. Created `test/blocked.bats` with 11 integration tests covering empty list, dep filtering, closed exclusion, sort order, output format, assignee/tag filters, and in_progress display. Updated README.md and CHANGELOG.md. All 73 unit tests and 161 bats tests pass.
-
-### Iteration 13: Ready command for actionable tickets
-- **Branch**: ralph/ready-command
-- **PR**: #14 (merged)
-- **Summary**: Created `cmd/ready.go` with `cobra.NoArgs` — loads all tickets via `tickets.List()`, builds statusMap, filters to open/in_progress tickets with all deps closed or absent (missing deps non-blocking), supports `-a/--assignee` and `-T/--tag` flags, sorts by priority ascending then ID ascending. Added `formatReadyLine()` to `cmd/format.go` with format `id [P<priority>][<status>] - Title` (empty status displayed as `[open]`). Created `test/ready.bats` with 11 integration tests covering empty list, dep filtering, closed exclusion, sort order, output format, assignee/tag filters, and empty status. Updated README.md and CHANGELOG.md. All 73 unit tests and 150 bats tests pass.
-
-### Iteration 12: List command filters and improved output format
-- **Branch**: ralph/list-filters-and-format
-- **PR**: #13 (merged)
-- **Summary**: Rewrote `formatTicketLine()` in `cmd/format.go` using `strings.Builder` for new output format `id [status] - Title <- [dep1, dep2]` (status/deps omitted when empty). Added `--status`, `-a/--assignee`, `-T/--tag` filter flags to `cmd/list.go` with AND-combined logic. `--status open` matches both empty and `"open"` statuses. Removed "No tickets" message — empty results produce no output. Updated `ticket_count()` helper in `test/test_helper.bash`. Rewrote `test/list.bats` from 4 to 20 tests covering output format, all filters, and combinations. Updated README.md and CHANGELOG.md. All 73 unit tests and 139 bats tests pass.
-
-### Iteration 11: Link/unlink commands for bidirectional ticket linking
-- **Branch**: ralph/link-unlink-commands
-- **PR**: #12 (merged)
-- **Summary**: Added `AddLink(dir string, ids []string)` and `RemoveLink(dir string, id string, targetID string)` to `internal/tickets/file.go` — both bidirectional (update all involved files), idempotent, resolve partial IDs via `findTicketFile`, and store full resolved IDs. Created `cmd/link.go` (`MinimumNArgs(2)`, supports 3+ tickets) and `cmd/unlink.go` (`ExactArgs(2)`). Added 7 unit tests in `file_test.go` (`TestAddLink`, `TestAddLinkThreeTickets`, `TestAddLinkIdempotent`, `TestAddLinkTicketNotFound`, `TestRemoveLink`, `TestRemoveLinkIdempotent`, `TestRemoveLinkTicketNotFound`). Created `test/link.bats` (8 tests) and `test/unlink.bats` (6 tests). Updated README.md and CHANGELOG.md. All 73 unit tests and 123 bats tests pass.
-
-### Iteration 10: Dep cycle command for DFS-based cycle detection
-- **Branch**: ralph/dep-cycle-command
-- **PR**: #11 (merged)
-- **Summary**: Created `internal/tickets/cycle.go` with `DepCycles()` public API, `findCycles()` using 3-color DFS (white/gray/black), `extractCycle()`, `normalizeCycle()` (rotate so smallest ID first), `deduplicateCycles()` (string-join map key), `formatCycles()`/`formatCycleMember()`. Created `cmd/dep_cycle.go` as cobra subcommand `cycle` under `depCmd` with `cobra.NoArgs`. Only prints when cycles found. Closed tickets excluded from adjacency graph. Added 8 unit tests in `cycle_test.go` (NoCycles, Simple, ThreeNode, Multiple, ClosedExcluded, Normalized, NoDeps, WithStatus) and 7 integration tests in `test/dep_cycle.bats`. Updated README.md and CHANGELOG.md. All 66 unit tests and 109 bats tests pass.
-
-### Iteration 9: Dep tree command with box-drawing output
-- **Branch**: ralph/dep-tree-command
-- **PR**: #10 (merged)
-- **Summary**: Created `internal/tickets/tree.go` with `DepTree()`, `buildTreeNode()`, `subtreeDepth()`, `formatTree()`, `formatChildren()`, `formatNodeLine()` for tree rendering with box-drawing characters (`├── `, `└── `, `│   `). Created `cmd/dep_tree.go` as cobra subcommand under `depCmd` with `--full` flag. Cycle detection via ancestors map with `(cycle)` markers, deduplication via visited map with `(dup)` markers. Children sorted by subtree depth descending then ID ascending. Missing deps silently skipped. Added 8 unit tests in `tree_test.go` and 9 integration tests in `test/dep_tree.bats`. Updated README.md and CHANGELOG.md. All 58 unit tests and 102 bats tests pass.
-
-### Iteration 8: Dep/undep commands for dependency management
-- **Branch**: ralph/dep-undep-commands
-- **PR**: #9 (merged)
-- **Summary**: Added `AddDep(dir, id, depID string)` and `RemoveDep(dir, id, depID string)` to `internal/tickets/file.go` — both validate both IDs exist via `findTicketFile`, store full resolved IDs, and are idempotent. Created `cmd/dep.go` and `cmd/undep.go` cobra commands with `ExactArgs(2)`. Added 7 unit tests (`TestAddDep`, `TestAddDepIdempotent`, `TestAddDepTicketNotFound`, `TestAddDepDepNotFound`, `TestRemoveDep`, `TestRemoveDepNotPresent`, `TestRemoveDepTicketNotFound`). Created `test/dep.bats` (8 tests) and `test/undep.bats` (5 tests). Updated README.md and CHANGELOG.md. All 50 unit tests and 93 bats tests pass.
-
-### Iteration 7: Partial ID matching
-- **Branch**: ralph/partial-id-matching
-- **PR**: #8 (merged)
-- **Summary**: Enhanced `findTicketFile()` with partial ID resolution — exact match first via `os.Stat()`, then `os.ReadDir()` scanning `.md` files for substring matches using `strings.Contains()`. Added `sort` and `strings` imports. Ambiguous matches (2+) produce sorted error message. Added 6 unit tests (`TestFindTicketFilePartialPrefix`, `Suffix`, `Substring`, `Ambiguous`, `ExactPrecedence`, `NotFound`). Created `test/partial_id.bats` with 11 integration tests covering show/done/status/start/close/reopen/set-description with partial IDs, not-found error, and exact match precedence. Updated README.md and CHANGELOG.md. All 43 unit tests and 80 bats tests pass.
-
-### Iteration 6: Status management commands
-- **Branch**: ralph/status-management-commands
-- **PR**: #7 (merged)
-- **Summary**: Added `SetStatus(dir, id, status string)` function with `validStatuses` map for validation. Created 4 new commands: `status <id> <status>`, `start <id>` (sets in_progress), `close <id>` (sets closed), `reopen <id>` (sets open). Added 3 unit tests (`TestSetStatus`, `TestSetStatusInvalid`, `TestSetStatusNotFound`). Created 4 bats test files with 18 integration tests (`test/status.bats` 7, `test/start.bats` 3, `test/close.bats` 4, `test/reopen.bats` 4). Updated README.md and CHANGELOG.md. All 37 unit tests and 69 bats tests pass.
-
-### Iteration 5: Add command creation flags
-- **Branch**: ralph/add-command-flags
-- **PR**: #6 (merged)
-- **Summary**: Added `Design` and `Acceptance` fields to `Ticket` and `frontmatter` structs. Refactored `Add(dir, title, description)` to `Add(dir string, t *Ticket)` for cleaner API. Added parent validation in `Add()` using `findTicketFile()`. Added 9 cobra flags to `cmd/add.go` (`-d/--description`, `-t/--type`, `-p/--priority`, `-a/--assignee`, `--external-ref`, `--parent`, `--design`, `--acceptance`, `--tags`). Default title "Untitled", default type "task", default priority 2, default assignee from `git config user.name`. Description priority: `-d` flag > positional arg > stdin. Updated callers in `cmd/quick_add.go` and `internal/tui/tui.go`. Added 21 new bats tests (51 total). Updated README.md flags table and CHANGELOG.md. All 34 unit tests and 51 bats tests pass.
-
-### Iteration 4: Done sets status=closed and command/test updates
-- **Branch**: ralph/done-sets-status-closed
-- **PR**: #5 (merged)
-- **Summary**: Changed `Done()` from deleting ticket files to setting `status: closed` and writing back to disk. Added closed-ticket filtering in `cmd/list.go` and `internal/tui/tui.go`. Updated `TestDone` and `TestMultipleTickets` in `file_test.go` to verify file persistence and closed status. Rewrote `test/done.bats`: renamed tests to "closes ticket", added `show` assertions for `status: closed`, added new test for file persistence on disk. Updated `README.md` and `CHANGELOG.md`. All 33 unit tests and 30 bats tests pass.
+### Iteration 1: Enrich TUI detail panel with all ticket metadata
+- **Commit**: 546cf84
+- **Summary**: Rewrote `updateDetailContent()` in `internal/tui/tui.go` to display all 15 ticket fields. Added 3 new styles (`metaLabelStyle`, `metaValueStyle`, `sectionHeadingStyle`) in `internal/tui/styles.go`. Status always shown (defaults to "open"), Priority always shown as `P<n>`, other string/slice fields shown conditionally. Design and Acceptance rendered as markdown sections before Description. All 93 unit tests and 211 bats integration tests pass.
