@@ -339,7 +339,7 @@ func (m Model) updateDetailPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) addTicket(title string) tea.Cmd {
 	return func() tea.Msg {
-		t, err := tickets.Add(m.dir, title, "")
+		t, err := tickets.Add(m.dir, &tickets.Ticket{Title: title})
 		if err != nil {
 			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
 		}

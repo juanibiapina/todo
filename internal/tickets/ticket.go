@@ -19,6 +19,8 @@ type Ticket struct {
 	Created     string
 	Parent      string
 	ExternalRef string
+	Design      string
+	Acceptance  string
 	Deps        []string
 	Links       []string
 	Tags        []string
@@ -35,6 +37,8 @@ type frontmatter struct {
 	Created     string   `yaml:"created,omitempty"`
 	Parent      string   `yaml:"parent,omitempty"`
 	ExternalRef string   `yaml:"external_ref,omitempty"`
+	Design      string   `yaml:"design,omitempty"`
+	Acceptance  string   `yaml:"acceptance,omitempty"`
 	Deps        []string `yaml:"deps,omitempty"`
 	Links       []string `yaml:"links,omitempty"`
 	Tags        []string `yaml:"tags,omitempty"`
@@ -57,6 +61,8 @@ func (t *Ticket) FullString() string {
 		Created:     t.Created,
 		Parent:      t.Parent,
 		ExternalRef: t.ExternalRef,
+		Design:      t.Design,
+		Acceptance:  t.Acceptance,
 		Deps:        t.Deps,
 		Links:       t.Links,
 		Tags:        t.Tags,

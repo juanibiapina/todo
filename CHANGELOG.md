@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Render markdown in TUI detail panel using glamour
 - Comprehensive bats integration tests
 - Space shortcut in TUI to copy ticket ID to clipboard
+- `todo add` flags: `-d/--description`, `-t/--type` (default `task`), `-p/--priority` (default `2`), `-a/--assignee` (default `git user.name`), `--external-ref`, `--parent` (validates existence), `--design`, `--acceptance`, `--tags` (comma-separated)
+- Default title "Untitled" when `todo add` is called with no arguments
+- Parent ticket validation: `--parent` must reference an existing ticket ID
 
 ### Changed
 

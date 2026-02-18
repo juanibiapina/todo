@@ -46,6 +46,8 @@ func TestFullStringWithAllFields(t *testing.T) {
 		Created:     "2026-01-15",
 		Parent:      "prt",
 		ExternalRef: "JIRA-123",
+		Design:      "Use microservices",
+		Acceptance:  "All tests pass",
 		Deps:        []string{"dep1", "dep2"},
 		Links:       []string{"lnk1"},
 		Tags:        []string{"backend", "urgent"},
@@ -68,6 +70,8 @@ func TestFullStringWithAllFields(t *testing.T) {
 		"created: \"2026-01-15\"",
 		"parent: prt",
 		"external_ref: JIRA-123",
+		"design: Use microservices",
+		"acceptance: All tests pass",
 		"deps:",
 		"- dep1",
 		"- dep2",
@@ -193,7 +197,7 @@ func TestFullStringOmitsEmptyStrings(t *testing.T) {
 
 	got := ticket.FullString()
 
-	omitted := []string{"status:", "type:", "assignee:", "created:", "parent:", "external_ref:"}
+	omitted := []string{"status:", "type:", "assignee:", "created:", "parent:", "external_ref:", "design:", "acceptance:"}
 	for _, field := range omitted {
 		if strings.Contains(got, field) {
 			t.Errorf("empty field %q should be omitted, got:\n%s", field, got)

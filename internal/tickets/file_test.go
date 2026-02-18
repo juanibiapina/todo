@@ -16,7 +16,7 @@ func tempDir(t *testing.T) string {
 func TestAddAndList(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "Fix login bug", "")
+	ticket, err := Add(dir, &Ticket{Title: "Fix login bug"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestAddAndList(t *testing.T) {
 func TestAddWithDescription(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "Refactor auth", "Move auth to middleware layer.")
+	ticket, err := Add(dir, &Ticket{Title: "Refactor auth", Description: "Move auth to middleware layer."})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestAddWithMultilineBacktickDescription(t *testing.T) {
 	// Use actual newlines
 	desc = strings.ReplaceAll(desc, "\\n", "\n")
 
-	ticket, err := Add(dir, "Backtick test", desc)
+	ticket, err := Add(dir, &Ticket{Title: "Backtick test", Description: desc})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestAddWithMultilineBacktickDescription(t *testing.T) {
 func TestShowByID(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "Test ticket", "")
+	ticket, err := Add(dir, &Ticket{Title: "Test ticket"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestShowByID(t *testing.T) {
 func TestDone(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "To close", "")
+	ticket, err := Add(dir, &Ticket{Title: "To close"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestDone(t *testing.T) {
 func TestSetDescription(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "Desc test", "")
+	ticket, err := Add(dir, &Ticket{Title: "Desc test"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestSetDescription(t *testing.T) {
 func TestSetDescriptionWithBackticks(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "Backtick desc", "")
+	ticket, err := Add(dir, &Ticket{Title: "Backtick desc"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -189,12 +189,12 @@ func TestSetDescriptionWithBackticks(t *testing.T) {
 func TestMultipleTickets(t *testing.T) {
 	dir := tempDir(t)
 
-	Add(dir, "First", "")
-	second, err := Add(dir, "Second", "With description")
+	Add(dir, &Ticket{Title: "First"})
+	second, err := Add(dir, &Ticket{Title: "Second", Description: "With description"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	Add(dir, "Third", "")
+	Add(dir, &Ticket{Title: "Third"})
 
 	tickets, err := List(dir)
 	if err != nil {
@@ -263,7 +263,7 @@ func TestListEmptyDir(t *testing.T) {
 func TestFileFormat(t *testing.T) {
 	dir := tempDir(t)
 
-	ticket, err := Add(dir, "My Ticket", "Some description")
+	ticket, err := Add(dir, &Ticket{Title: "My Ticket", Description: "Some description"})
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -364,6 +364,8 @@ func TestParseFileRoundTripAllFields(t *testing.T) {
 		Created:     "2026-01-15",
 		Parent:      "prt",
 		ExternalRef: "JIRA-123",
+		Design:      "Use microservices",
+		Acceptance:  "All tests pass",
 		Deps:        []string{"dep1", "dep2"},
 		Links:       []string{"lnk1"},
 		Tags:        []string{"backend", "urgent"},
@@ -408,6 +410,12 @@ func TestParseFileRoundTripAllFields(t *testing.T) {
 	if loaded.ExternalRef != original.ExternalRef {
 		t.Errorf("ExternalRef = %q, want %q", loaded.ExternalRef, original.ExternalRef)
 	}
+	if loaded.Design != original.Design {
+		t.Errorf("Design = %q, want %q", loaded.Design, original.Design)
+	}
+	if loaded.Acceptance != original.Acceptance {
+		t.Errorf("Acceptance = %q, want %q", loaded.Acceptance, original.Acceptance)
+	}
 	if len(loaded.Deps) != len(original.Deps) {
 		t.Errorf("Deps len = %d, want %d", len(loaded.Deps), len(original.Deps))
 	}
@@ -416,6 +424,43 @@ func TestParseFileRoundTripAllFields(t *testing.T) {
 	}
 	if len(loaded.Tags) != len(original.Tags) {
 		t.Errorf("Tags len = %d, want %d", len(loaded.Tags), len(original.Tags))
+	}
+}
+
+func TestAddWithParentValidation(t *testing.T) {
+	dir := tempDir(t)
+
+	// Adding with a non-existent parent should fail
+	_, err := Add(dir, &Ticket{Title: "Child", Parent: "nonexistent"})
+	if err == nil {
+		t.Error("Add with non-existent parent should fail")
+	}
+	if err != nil && !strings.Contains(err.Error(), "parent ticket not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// Create a parent ticket
+	parent, err := Add(dir, &Ticket{Title: "Parent ticket"})
+	if err != nil {
+		t.Fatalf("Add parent: %v", err)
+	}
+
+	// Adding with an existing parent should succeed
+	child, err := Add(dir, &Ticket{Title: "Child ticket", Parent: parent.ID})
+	if err != nil {
+		t.Fatalf("Add child: %v", err)
+	}
+	if child.Parent != parent.ID {
+		t.Errorf("Parent = %q, want %q", child.Parent, parent.ID)
+	}
+
+	// Verify round-trip
+	loaded, err := Show(dir, child.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if loaded.Parent != parent.ID {
+		t.Errorf("loaded Parent = %q, want %q", loaded.Parent, parent.ID)
 	}
 }
 
