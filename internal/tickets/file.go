@@ -371,6 +371,113 @@ func RemoveDep(dir string, id string, depID string) error {
 	return writeFile(dir, t)
 }
 
+// AddLink creates bidirectional links between all provided ticket IDs.
+// All tickets must exist. The operation is idempotent.
+// For 3+ IDs, all pairs are linked.
+func AddLink(dir string, ids []string) error {
+	// Resolve all IDs and load tickets
+	type resolved struct {
+		id   string
+		path string
+	}
+	var tickets []resolved
+
+	for _, id := range ids {
+		path, err := findTicketFile(dir, id)
+		if err != nil {
+			return err
+		}
+		fullID := strings.TrimSuffix(filepath.Base(path), ".md")
+		tickets = append(tickets, resolved{id: fullID, path: path})
+	}
+
+	// For each ticket, add all other tickets as links
+	for i, ticket := range tickets {
+		t, err := parseFile(ticket.path)
+		if err != nil {
+			return err
+		}
+
+		modified := false
+		for j, other := range tickets {
+			if i == j {
+				continue
+			}
+			// Check if already present (idempotent)
+			found := false
+			for _, l := range t.Links {
+				if l == other.id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Links = append(t.Links, other.id)
+				modified = true
+			}
+		}
+
+		if modified {
+			if err := writeFile(dir, t); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// RemoveLink removes a bidirectional link between two tickets.
+// Both tickets must exist. The operation is idempotent.
+func RemoveLink(dir string, id string, targetID string) error {
+	// Resolve both IDs
+	path, err := findTicketFile(dir, id)
+	if err != nil {
+		return err
+	}
+	targetPath, err := findTicketFile(dir, targetID)
+	if err != nil {
+		return err
+	}
+
+	resolvedID := strings.TrimSuffix(filepath.Base(path), ".md")
+	resolvedTargetID := strings.TrimSuffix(filepath.Base(targetPath), ".md")
+
+	// Remove targetID from id's links
+	t, err := parseFile(path)
+	if err != nil {
+		return err
+	}
+	var newLinks []string
+	for _, l := range t.Links {
+		if l != resolvedTargetID {
+			newLinks = append(newLinks, l)
+		}
+	}
+	t.Links = newLinks
+	if err := writeFile(dir, t); err != nil {
+		return err
+	}
+
+	// Remove id from targetID's links
+	t2, err := parseFile(targetPath)
+	if err != nil {
+		return err
+	}
+	var newLinks2 []string
+	for _, l := range t2.Links {
+		if l != resolvedID {
+			newLinks2 = append(newLinks2, l)
+		}
+	}
+	t2.Links = newLinks2
+	if err := writeFile(dir, t2); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SetDescription sets or replaces a ticket's description.
 func SetDescription(dir string, id string, description string) (string, error) {
 	path, err := findTicketFile(dir, id)

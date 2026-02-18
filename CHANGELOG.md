@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo undep <id> <dep-id>` — remove a dependency between tickets (idempotent, validates both exist)
 - `todo dep tree <id>` — display dependency tree with box-drawing characters, `[status]` labels, cycle/dedup markers, and `--full` flag to disable deduplication
 - `todo dep cycle` — DFS-based cycle detection on open (non-closed) tickets, outputs normalized cycles with member details
+- `todo link <id> <id> [id...]` — create bidirectional links between tickets (supports 3+ tickets, idempotent, validates all exist)
+- `todo unlink <id> <target-id>` — remove a bidirectional link between two tickets (idempotent, validates both exist)
 
 ### Changed
 
