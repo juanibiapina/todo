@@ -1,13 +1,13 @@
 package tickets
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 const defaultDirName = "docs/tickets"
@@ -17,49 +17,26 @@ func DirPath(dir string) string {
 	return filepath.Join(dir, defaultDirName)
 }
 
-// slugify converts a title to a URL-safe slug.
-func slugify(title string) string {
-	// Lowercase
-	s := strings.ToLower(title)
-
-	// Replace non-alphanumeric characters with hyphens
-	reg := regexp.MustCompile(`[^a-z0-9]+`)
-	s = reg.ReplaceAllString(s, "-")
-
-	// Trim leading/trailing hyphens
-	s = strings.Trim(s, "-")
-
-	// Truncate to reasonable length
-	if len(s) > 50 {
-		s = s[:50]
-		// Don't end with a hyphen
-		s = strings.TrimRight(s, "-")
-	}
-
-	return s
-}
-
 // ticketFileName generates the filename for a ticket.
-func ticketFileName(id, title string) string {
-	return fmt.Sprintf("%s-%s.md", id, slugify(title))
+func ticketFileName(id string) string {
+	return fmt.Sprintf("%s.md", id)
 }
 
 // ticketFilePath returns the full path for a ticket file.
-func ticketFilePath(dir, id, title string) string {
-	return filepath.Join(DirPath(dir), ticketFileName(id, title))
+func ticketFilePath(dir, id string) string {
+	return filepath.Join(DirPath(dir), ticketFileName(id))
 }
 
-// findTicketFile finds a ticket file by ID using glob pattern.
+// findTicketFile finds a ticket file by ID using exact match.
 func findTicketFile(dir, id string) (string, error) {
-	pattern := filepath.Join(DirPath(dir), id+"-*.md")
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
+	path := ticketFilePath(dir, id)
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("ticket not found: %s", id)
+		}
 		return "", err
 	}
-	if len(matches) == 0 {
-		return "", fmt.Errorf("ticket not found: %s", id)
-	}
-	return matches[0], nil
+	return path, nil
 }
 
 // parseFile reads a single ticket file and returns the ticket.
@@ -69,60 +46,58 @@ func parseFile(path string) (*Ticket, error) {
 		return nil, err
 	}
 
-	var ticket *Ticket
-	inFrontMatter := false
-	fmCount := 0
-	pastFM := false
-	var descLines []string
+	content := string(data)
 
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
-	for scanner.Scan() {
-		line := scanner.Text()
+	// Expect YAML frontmatter opening delimiter
+	if !strings.HasPrefix(content, "---\n") {
+		return nil, fmt.Errorf("missing frontmatter opening delimiter")
+	}
 
-		// Title line
-		if strings.HasPrefix(line, "# ") && ticket == nil {
-			ticket = &Ticket{
-				Title: strings.TrimPrefix(line, "# "),
-			}
-			continue
-		}
+	// Find the closing --- delimiter
+	rest := content[4:] // skip opening "---\n"
+	closingIdx := strings.Index(rest, "\n---\n")
+	if closingIdx < 0 {
+		return nil, fmt.Errorf("missing frontmatter closing delimiter")
+	}
 
-		if ticket == nil {
-			continue
-		}
+	yamlContent := rest[:closingIdx]
+	afterFrontmatter := rest[closingIdx+5:] // skip "\n---\n"
 
-		// Front matter delimiters
-		if !pastFM && line == "---" {
-			fmCount++
-			if fmCount == 1 {
-				inFrontMatter = true
-			} else if fmCount == 2 {
-				inFrontMatter = false
-				pastFM = true
-			}
-			continue
-		}
+	// Parse YAML frontmatter
+	var fm frontmatter
+	if err := yaml.Unmarshal([]byte(yamlContent), &fm); err != nil {
+		return nil, fmt.Errorf("invalid frontmatter YAML: %w", err)
+	}
 
-		// Front matter content
-		if inFrontMatter {
-			if strings.HasPrefix(line, "id: ") {
-				ticket.ID = strings.TrimPrefix(line, "id: ")
-			}
-			continue
-		}
+	// Parse title line (expect "# Title\n")
+	var title string
+	var description string
 
-		// Description content
-		if pastFM {
-			descLines = append(descLines, line)
+	if strings.HasPrefix(afterFrontmatter, "# ") {
+		nlIdx := strings.Index(afterFrontmatter, "\n")
+		if nlIdx >= 0 {
+			title = afterFrontmatter[2:nlIdx]
+			descPart := afterFrontmatter[nlIdx+1:]
+			description = strings.TrimRight(descPart, "\n")
+		} else {
+			title = afterFrontmatter[2:]
 		}
 	}
 
-	if ticket != nil && pastFM && len(descLines) > 0 {
-		ticket.Description = strings.TrimRight(strings.Join(descLines, "\n"), "\n")
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
+	ticket := &Ticket{
+		Title:       title,
+		ID:          fm.ID,
+		Description: description,
+		Status:      fm.Status,
+		Type:        fm.Type,
+		Priority:    fm.Priority,
+		Assignee:    fm.Assignee,
+		Created:     fm.Created,
+		Parent:      fm.Parent,
+		ExternalRef: fm.ExternalRef,
+		Deps:        fm.Deps,
+		Links:       fm.Links,
+		Tags:        fm.Tags,
 	}
 
 	return ticket, nil
@@ -130,7 +105,7 @@ func parseFile(path string) (*Ticket, error) {
 
 // writeFile writes a ticket to its file.
 func writeFile(dir string, t *Ticket) error {
-	path := ticketFilePath(dir, t.ID, t.Title)
+	path := ticketFilePath(dir, t.ID)
 	return os.WriteFile(path, []byte(t.FullString()), 0644)
 }
 
@@ -261,14 +236,10 @@ func SetDescription(dir string, id string, description string) (string, error) {
 		return "", err
 	}
 
-	// Remove old file (in case title changed affecting filename)
-	if err := os.Remove(path); err != nil {
-		return "", err
-	}
-
 	t.Description = description
 
-	if err := writeFile(dir, t); err != nil {
+	// Overwrite in place — filename doesn't depend on title
+	if err := os.WriteFile(path, []byte(t.FullString()), 0644); err != nil {
 		return "", err
 	}
 

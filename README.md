@@ -100,26 +100,26 @@ Opens an interactive prompt to quickly add a ticket and exit.
 
 ## File Format
 
-Tickets are stored in a `docs/tickets/` directory, one file per ticket. Each file is named `<id>-<slug>.md`:
+Tickets are stored in a `docs/tickets/` directory, one file per ticket. Each file is named `<id>.md`:
 
 ```
 docs/tickets/
-├── aBc-fix-login-timeout.md
-└── xYz-refactor-auth-module.md
+├── aBc.md
+└── xYz.md
 ```
 
-Each file contains:
+Each file contains YAML frontmatter followed by the title and optional description:
 
 ```markdown
-# Fix login timeout
 ---
 id: aBc
 ---
+# Fix login timeout
 Description goes here.
 Multiple lines are supported.
 ```
 
-The `#` heading is the ticket title. A YAML front matter block (`---` delimited) contains the `id`. Everything after the closing `---` is the description.
+The YAML frontmatter block (`---` delimited) contains the ticket metadata. The `id` field is always present; additional fields like `status`, `type`, `priority`, `assignee`, `tags`, etc. are included only when set. The `# Title` heading follows the frontmatter. Everything after the title line is the description.
 
 ## License
 
