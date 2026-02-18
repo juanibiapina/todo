@@ -36,13 +36,13 @@ load test_helper
   run todo dep "${id_a}" "${id_b}"
   assert_success
 
-  # Should only have one dep entry, not two
+  # Should only have one dep entry, not two — count in the YAML frontmatter section only
   run todo show "${id_a}"
   assert_success
-  # Count occurrences of the dep ID in deps section
-  local count
-  count=$(echo "$output" | grep -c "${id_b}" || true)
-  [ "$count" -eq 1 ]
+  # Extract frontmatter (between --- delimiters) and count dep ID occurrences
+  local fm_count
+  fm_count=$(echo "$output" | sed -n '/^---$/,/^---$/p' | grep -c "${id_b}" || true)
+  [ "$fm_count" -eq 1 ]
 }
 
 @test "dep fails when ticket does not exist" {
