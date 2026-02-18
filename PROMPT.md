@@ -37,7 +37,7 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 ## Steps
 
 - [x] Update Ticket struct to add new fields (Status, Deps, Links, Created, Type, Priority, Assignee, ExternalRef, Parent, Tags) and change FullString() to write YAML-frontmatter-first format (`--- YAML --- # Title\nDescription`). Add unit tests for the new format (iteration 1)
-- [ ] Keep 3-char random base62 ID generation (current format). No changes needed to id.go. Verify existing unit tests cover ID uniqueness and format
+- [x] Keep 3-char random base62 ID generation (current format). No changes needed to id.go. Verify existing unit tests cover ID uniqueness and format (iteration 2)
 - [ ] Change file naming from `<id>-<slug>.md` to `<id>.md`. Remove slugify(), update ticketFileName/ticketFilePath, update findTicketFile for exact match, update parseFile/writeFile for YAML-first frontmatter format. Update file_test.go unit tests
 - [ ] Update all commands (add, done, show, list, set-description, format) to work with the new file format, naming, and ID generation. Update all existing bats tests to match new output format, ID patterns, and done behavior (status=closed instead of delete)
 - [ ] Add creation flags to add command: `-d/--description`, `-t/--type` (bug/feature/task/epic/chore, default task), `-p/--priority` (0-4, default 2), `-a/--assignee` (default git user.name), `--external-ref`, `--parent` (validate exists), `--design`, `--acceptance`, `--tags` (comma-separated). Default title to "Untitled". Add bats tests for each flag and default values
@@ -62,6 +62,8 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - `omitempty` on all YAML fields except `id` keeps output minimal; priority=0 is omitted which is acceptable since step 5 sets default priority=2
 - `gopkg.in/yaml.v3` added as dependency for proper YAML serialization
 - Existing `file_test.go` tests break because `parseFile()` still reads old format — expected, to be fixed in step 3
+- `generateID()` and `generateUniqueID()` are unexported — tests must be in `package tickets` (same package) to access them directly
+- Only prior ID test coverage was a `len(ticket.ID) != 3` check in `file_test.go` — dedicated `id_test.go` now provides comprehensive coverage
 
 ## History
 
@@ -69,3 +71,8 @@ Bring all features from wedow/ticket into juanibiapina/todo, keeping todo's uniq
 - **Branch**: ralph/ticket-yaml-frontmatter
 - **PR**: #2 (merged)
 - **Summary**: Added 10 new fields to Ticket struct (Status, Type, Priority, Assignee, Created, Parent, ExternalRef, Deps, Links, Tags). Created `frontmatter` helper struct with YAML tags. Rewrote `FullString()` to output `---\nYAML\n---\n# Title\nDescription` format using `gopkg.in/yaml.v3`. Added 12 unit tests in `ticket_test.go`. `String()` method unchanged.
+
+### Iteration 2: ID generation test coverage
+- **Branch**: ralph/id-generation-tests
+- **PR**: #3 (merged)
+- **Summary**: Created `internal/tickets/id_test.go` with 6 test functions covering `generateID()` (length, base62 character set, randomness) and `generateUniqueID()` (empty map, collision avoidance, high-pressure with 1000 pre-populated IDs). No changes to `id.go` — verification only.
