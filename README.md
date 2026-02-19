@@ -455,7 +455,41 @@ Both commands validate that the referenced tickets exist. Operations are idempot
 todo tui
 ```
 
-Launches a full-screen terminal interface with a split-panel layout (ticket list + detail view). Navigate, add, and close tickets interactively.
+Launches a full-screen terminal interface with a split-panel layout for managing tickets interactively.
+
+**Panels:**
+
+- **List panel** (left) — Shows tickets as `ID [P<n>][status] Title` with color-coded badges. Priority: P0–P1 red, P2 yellow, P3+ muted. Status: `in_progress` green, `open` default, `closed` muted.
+- **Detail panel** (right) — Shows full ticket metadata (Status, Type, Priority, Assignee, Created, Parent, Ref, Tags, Deps, Links), markdown-rendered Design/Acceptance/Description sections, and computed relationships (Blockers, Blocking, Children, Linked).
+
+**View modes:**
+
+| Key | View | Description |
+|-----|------|-------------|
+| `1` | All | Open and in-progress tickets (default) |
+| `2` | Ready | Tickets with all deps closed or no deps |
+| `3` | Blocked | Tickets with at least one unclosed dep |
+| `4` | Closed | Closed tickets sorted by last modified |
+
+**Keybindings:**
+
+| Context | Key | Action |
+|---------|-----|--------|
+| List | `↑`/`k`, `↓`/`j` | Move cursor |
+| List | `g`/`G` | First / last ticket |
+| List | `a` | Add ticket (defaults: type=task, priority=2, assignee=git user.name) |
+| List | `s` | Start ticket (set status to `in_progress`) |
+| List | `c`/`d` | Close ticket (set status to `closed`) |
+| List | `r` | Reopen ticket (set status to `open`) |
+| List | `e` | Edit ticket in `$EDITOR` |
+| List | `n` | Add note to ticket |
+| List | `space` | Copy ticket ID to clipboard |
+| Detail | `↑`/`k`, `↓`/`j` | Scroll content |
+| Detail | `g`/`G` | Top / bottom |
+| Detail | `ctrl+u`/`ctrl+d` | Half page up / down |
+| General | `tab` | Switch panels |
+| General | `?` | Show help |
+| General | `esc`/`q` | Quit |
 
 ### Quick add (for tmux popups)
 

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- TUI detail panel displays all ticket metadata fields (Status, Type, Priority, Assignee, Created, Parent, ExternalRef, Tags, Deps, Links) with styled labels, plus markdown-rendered Design and Acceptance sections
+- TUI detail panel shows computed relationships: Blockers, Blocking, Children, Linked sections with `ID [status] Title` entries
+- TUI list panel shows color-coded priority and status badges (`ID [P<n>][status] Title`) — P0–P1 red, P2 yellow, P3+ muted; in_progress green, open default, closed muted
+- TUI view modes: `1` All open (default), `2` Ready, `3` Blocked, `4` Closed — matching CLI `list`/`ready`/`blocked`/`closed` commands
+- TUI status management keybindings: `s` start (in_progress), `c`/`d` close (closed), `r` reopen (open)
+- TUI edit-in-editor: `e` opens selected ticket in `$EDITOR` (defaults to `vi`), suspending the TUI
+- TUI add-note modal: `n` opens text input to append a timestamped note via `tickets.AddNote()`
+- TUI add modal applies CLI defaults: type=task, priority=2, assignee=git user.name
 - Render markdown in TUI detail panel using glamour
 - Comprehensive bats integration tests
 - Space shortcut in TUI to copy ticket ID to clipboard
@@ -38,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- TUI `d` keybinding changed from "mark done (delete)" to "close" (alias for `c`, sets status to closed)
+- TUI help modal reorganized with dedicated "Views" section and all new keybinding entries; status bar updated with context-dependent hints
 - **Breaking:** Tickets now stored as individual files in `docs/tickets/` directory
   - Each ticket is a separate file named `<id>.md`
   - File format uses YAML frontmatter (`---` delimited) followed by `# Title` heading and description
