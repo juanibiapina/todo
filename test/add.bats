@@ -185,16 +185,13 @@ load test_helper
 # --- Assignee flag ---
 
 @test "add: default assignee is git user.name" {
-  local git_name
-  git_name="$(git config user.name)"
-
   run todo add "Assigned ticket"
   assert_success
 
   local id
   id="$(extract_id_from_add "${output}")"
   run todo show "${id}"
-  assert_output --partial "assignee: ${git_name}"
+  assert_output --partial "assignee: Test User"
 }
 
 @test "add: -a flag overrides default assignee" {

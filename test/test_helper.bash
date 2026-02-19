@@ -11,10 +11,13 @@ setup() {
   # Put our binary first in PATH
   export PATH="${BATS_TEST_TMPDIR}:${PATH}"
 
-  # Create and cd into a temp working directory
+  # Create and cd into a temp working directory with git identity
   export TODO_TEST_DIR="${BATS_TEST_TMPDIR}/workdir"
   mkdir -p "${TODO_TEST_DIR}"
   cd "${TODO_TEST_DIR}"
+  git init --quiet
+  git config user.name "Test User"
+  git config user.email "test@example.com"
 }
 
 # Helper: count tickets

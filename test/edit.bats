@@ -48,7 +48,11 @@ SCRIPT
   chmod +x "${editor_script}"
 
   # Use script to simulate a TTY so the editor path is taken
-  EDITOR="${editor_script}" script -q /dev/null todo edit "${id}" >/dev/null 2>&1 || true
+  if [[ "$(uname)" == "Darwin" ]]; then
+    script -q /dev/null env EDITOR="${editor_script}" todo edit "${id}" >/dev/null 2>&1 || true
+  else
+    script -q -c "EDITOR='${editor_script}' todo edit '${id}'" /dev/null >/dev/null 2>&1 || true
+  fi
 
   # Verify the marker file was created next to the ticket file
   local path
@@ -80,7 +84,7 @@ SCRIPT
   path="$(todo edit "${id}" | cat)"
 
   # Modify the file directly (simulating what an editor would do)
-  sed -i '' 's/Modify/Modified/' "${path}"
+  sed 's/Modify/Modified/' "${path}" > "${path}.tmp" && mv "${path}.tmp" "${path}"
 
   run todo show "${id}"
   assert_success
