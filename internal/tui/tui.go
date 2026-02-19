@@ -674,7 +674,18 @@ func (m Model) updateDetailPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) addTicket(title string) tea.Cmd {
 	return func() tea.Msg {
-		t, err := tickets.Add(m.dir, &tickets.Ticket{Title: title})
+		// Default assignee to git user.name
+		var assignee string
+		if out, err := exec.Command("git", "config", "user.name").Output(); err == nil {
+			assignee = strings.TrimSpace(string(out))
+		}
+
+		t, err := tickets.Add(m.dir, &tickets.Ticket{
+			Title:    title,
+			Type:     "task",
+			Priority: 2,
+			Assignee: assignee,
+		})
 		if err != nil {
 			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
 		}
