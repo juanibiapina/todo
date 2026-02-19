@@ -54,7 +54,7 @@ Update the bubbletea TUI (`internal/tui/`) to reflect all features added across 
 - [x] Add add-note modal. Add `modalNote` to `modalMode` enum. In list panel, `n` opens modal with text input (reuse `textInput` pattern from add modal). On enter, call `tickets.AddNote(dir, id, text)` and return `actionDoneMsg`. Modal title: "Add Note", help: "enter: save • esc: cancel". All existing tests must pass (iteration 7)
 - [x] Apply CLI defaults in add modal. When creating a ticket via the add modal, construct `tickets.Ticket{Title: title, Type: "task", Priority: 2, Assignee: gitUserName}` where `gitUserName` is resolved from `git config user.name` (same as `cmd/add.go`). Fall back to empty assignee if git command fails. All existing tests must pass (iteration 8)
 - [x] Update help modal, status bar, and `cmd/tui.go` long description. Help modal: add `s` start, `c` close, `r` reopen, `e` edit, `n` add note to Ticket List section; change `d` from "mark done (remove)" to "close"; add Views section with `1`/`2`/`3`/`4` keys. Status bar: add key hints for new actions (context-dependent per panel). Update `cmd/tui.go` Long description with complete keybinding reference. All existing tests must pass (iteration 9)
-- [ ] Update README.md "Interactive TUI" section to document view modes, all keybindings, metadata display, and relationship sections. Add CHANGELOG.md entry under `[Unreleased]` for TUI enhancements. All existing tests must pass
+- [x] Update README.md "Interactive TUI" section to document view modes, all keybindings, metadata display, and relationship sections. Add CHANGELOG.md entry under `[Unreleased]` for TUI enhancements. All existing tests must pass (iteration 10)
 
 ## Learnings
 
@@ -79,6 +79,8 @@ Update the bubbletea TUI (`internal/tui/`) to reflect all features added across 
 - `os/exec` and `strings` were already imported in `tui.go` from earlier iterations, so applying CLI defaults required no new imports
 - The `cmd/tui.go` Long description was completely outdated (referenced non-existent `K/J reorder` and old `d mark done`) — rewriting it entirely was cleaner than patching
 - Help modal benefits from a dedicated "Views" section separating `1-4` view keys from ticket action keys, improving scannability
+- Deferring README.md and CHANGELOG.md updates to the final step (after all TUI iterations) was the right call — writing documentation once with full context avoids premature rewrites and ensures accuracy
+- CHANGELOG entries benefit from splitting into `### Added` (new features) and `### Changed` (behavioral changes) for clarity — 8 Added + 2 Changed mapped cleanly to the 9 implementation iterations
 
 ## History
 
@@ -113,6 +115,10 @@ Update the bubbletea TUI (`internal/tui/`) to reflect all features added across 
 ### Iteration 8: Apply CLI defaults in TUI add modal
 - **Commit**: 2871caf
 - **Summary**: Modified `addTicket()` in `internal/tui/tui.go` to populate `Type: "task"`, `Priority: 2`, and `Assignee` (resolved from `git config user.name` with silent fallback to empty string) when creating tickets, matching CLI `cmd/add.go` defaults. No new imports needed (`os/exec` and `strings` already present). All 93 unit tests and 211 bats integration tests pass.
+
+### Iteration 10: Update README.md and CHANGELOG.md with TUI enhancements
+- **Commit**: 6a11218
+- **Summary**: Expanded README.md "Interactive TUI" section from a single line to comprehensive reference covering panel descriptions (list with `ID [P<n>][status] Title` badges, detail with metadata/relationships), view modes table (keys 1-4: All/Ready/Blocked/Closed), and full keybindings table (17 entries organized by List/Detail/General context). Added CHANGELOG.md entries under `[Unreleased]`: 8 `### Added` items (detail metadata, relationships, list badges, view modes, status management, edit-in-editor, add-note, add defaults) and 2 `### Changed` items (`d` keybinding repurposed, help modal reorganized). All 93 unit tests and 211 bats integration tests pass.
 
 ### Iteration 9: Update help modal, status bar, and CLI description
 - **Commit**: 7e5da34
