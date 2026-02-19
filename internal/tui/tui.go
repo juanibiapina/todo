@@ -33,6 +33,7 @@ type modalMode int
 const (
 	modalNone modalMode = iota
 	modalAdd
+	modalNote
 	modalHelp
 )
 
@@ -57,9 +58,10 @@ type Model struct {
 	scroll     ScrollState
 	view       viewMode
 
-	activePanel panel
-	modal       modalMode
-	width       int
+	activePanel  panel
+	modal        modalMode
+	noteTargetID string
+	width        int
 	height      int
 	ready       bool
 
@@ -508,6 +510,25 @@ func (m Model) updateModal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.textInput, cmd = m.textInput.Update(msg)
 		return m, cmd
 
+	case modalNote:
+		switch msg.String() {
+		case "esc":
+			m.modal = modalNone
+			return m, nil
+		case "enter":
+			text := m.textInput.Value()
+			if text != "" {
+				id := m.noteTargetID
+				m.modal = modalNone
+				return m, m.addNote(id, text)
+			}
+		case "ctrl+c":
+			return m, tea.Quit
+		}
+		var cmd tea.Cmd
+		m.textInput, cmd = m.textInput.Update(msg)
+		return m, cmd
+
 	case modalHelp:
 		switch msg.String() {
 		case "esc", "?", "q":
@@ -563,9 +584,20 @@ func (m Model) updateListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "a":
 		m.modal = modalAdd
-		m.textInput.Reset()
+		m.textInput.SetValue("")
+		m.textInput.Placeholder = "Ticket title..."
 		m.textInput.Focus()
 		return m, textinput.Blink
+
+	case "n":
+		if len(m.items) > 0 {
+			m.modal = modalNote
+			m.noteTargetID = m.items[m.scroll.Cursor].ID
+			m.textInput.SetValue("")
+			m.textInput.Placeholder = "Note text..."
+			m.textInput.Focus()
+			return m, textinput.Blink
+		}
 
 	case "d", "c":
 		if len(m.items) > 0 {
@@ -690,6 +722,16 @@ func (m Model) editTicket(id string) tea.Cmd {
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return editorFinishedMsg{err: err}
 	})
+}
+
+func (m Model) addNote(id, text string) tea.Cmd {
+	return func() tea.Msg {
+		title, err := tickets.AddNote(m.dir, id, text)
+		if err != nil {
+			return actionDoneMsg{message: fmt.Sprintf("Error: %v", err), isError: true}
+		}
+		return actionDoneMsg{message: fmt.Sprintf("Note added to %s: %s", id, title)}
+	}
 }
 
 func (m Model) copyTicket(t *tickets.Ticket) tea.Cmd {
@@ -980,6 +1022,8 @@ func (m Model) renderModal(background string) string {
 	switch m.modal {
 	case modalAdd:
 		content = m.renderAddModal()
+	case modalNote:
+		content = m.renderNoteModal()
 	case modalHelp:
 		content = m.renderHelpModal()
 	}
@@ -1078,6 +1122,15 @@ func (m Model) renderAddModal() string {
 	title := dialogTitleStyle.Render("Add Ticket")
 	input := m.textInput.View()
 	help := helpDescStyle.Render("enter: add • esc: cancel")
+
+	content := title + "\n\n" + input + "\n\n" + help
+	return dialogStyle.Render(content)
+}
+
+func (m Model) renderNoteModal() string {
+	title := dialogTitleStyle.Render("Add Note")
+	input := m.textInput.View()
+	help := helpDescStyle.Render("enter: save • esc: cancel")
 
 	content := title + "\n\n" + input + "\n\n" + help
 	return dialogStyle.Render(content)
