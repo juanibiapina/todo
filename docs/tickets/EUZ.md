@@ -1,7 +1,7 @@
-# Space shortcut should paste ticket into calling terminal
 ---
 id: EUZ
 ---
+# Space shortcut should paste ticket into calling terminal
 When running `todo tui` inside a tmux popup, the space shortcut should paste the ticket text directly into the calling tmux pane instead of copying to clipboard.
 
 **Detection:**

@@ -1,7 +1,7 @@
-# Set up release pipeline with GoReleaser and GitHub Actions
 ---
 id: uY3
 ---
+# Set up release pipeline with GoReleaser and GitHub Actions
 Set up automated releases with GoReleaser and GitHub Actions, following the juanibiapina/gob pattern.
 
 **Prerequisites:** Ideally have integration tests (USP) in place first so CI runs them before release.
