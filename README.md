@@ -8,11 +8,19 @@ Descriptions can be passed via stdin (heredocs, pipes) so multi-line content wit
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install juanibiapina/taps/todo
+```
+
+### Go
+
 ```bash
 go install github.com/juanibiapina/todo@latest
 ```
 
-Or build from source:
+### From source
 
 ```bash
 make build    # builds to dist/todo
