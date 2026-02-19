@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-19
+
 ### Added
 
 - TUI detail panel displays all ticket metadata fields (Status, Type, Priority, Assignee, Created, Parent, ExternalRef, Tags, Deps, Links) with styled labels, plus markdown-rendered Design and Acceptance sections
