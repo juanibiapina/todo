@@ -1,5 +1,6 @@
 ---
 id: uY3
+status: closed
 ---
 # Set up release pipeline with GoReleaser and GitHub Actions
 Set up automated releases with GoReleaser and GitHub Actions, following the juanibiapina/gob pattern.
