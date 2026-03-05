@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0]
+
+### Added
+
+- SQLite-backed storage at `~/.local/share/todo/todo.db` (respects `XDG_DATA_HOME`)
+- `TODO_DB` environment variable to override database path
+- Per-directory scoping: items are tied to the working directory's absolute path
+- Commands: `add`, `list`, `check`, `uncheck`, `clean`, `tui`
+- Bare `todo` runs `list` by default
+- Interactive TUI with add, toggle, and clean keybindings
+
+### Changed
+
+- **Breaking:** Complete rewrite — items are now simple one-line text entries with a checked/unchecked state
+- **Breaking:** Storage moved from per-project markdown files to a global SQLite database
+- **Breaking:** Integer auto-increment IDs replace 3-character base62 IDs
+
+### Removed
+
+- Markdown-based ticket storage
+- All ticket metadata: type, priority, assignee, status, description, deps, links, tags, parent, external-ref, design, acceptance, notes
+- Commands: `show`, `done`, `close`, `reopen`, `start`, `status`, `dep`, `undep`, `dep-cycle`, `dep-tree`, `link`, `unlink`, `blocked`, `ready`, `closed`, `query`, `edit`, `add-note`, `set-description`, `quick-add`
+
 ## [1.0.0] - 2026-02-19
 
 ### Added

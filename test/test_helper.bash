@@ -11,17 +11,17 @@ setup() {
   # Put our binary first in PATH
   export PATH="${BATS_TEST_TMPDIR}:${PATH}"
 
-  # Create and cd into a temp working directory with git identity
+  # Use a per-test database so tests are isolated
+  export TODO_DB="${BATS_TEST_TMPDIR}/todo.db"
+
+  # Create and cd into a temp working directory
   export TODO_TEST_DIR="${BATS_TEST_TMPDIR}/workdir"
   mkdir -p "${TODO_TEST_DIR}"
   cd "${TODO_TEST_DIR}"
-  git init --quiet
-  git config user.name "Test User"
-  git config user.email "test@example.com"
 }
 
-# Helper: count tickets
-ticket_count() {
+# Helper: count items in list output
+item_count() {
   local output
   output="$(todo list)"
   if [[ -z "${output}" ]]; then
@@ -31,18 +31,7 @@ ticket_count() {
   fi
 }
 
-# Helper: check if a ticket with given title exists
-has_ticket() {
-  local title="$1"
-  todo list | grep -qF "${title}"
-}
-
-# Helper: get the ID from an "Added ticket XXX" message (legacy)
+# Helper: extract ID from add output "ID text"
 extract_id() {
-  echo "$1" | grep -oE '[A-Za-z0-9]{3}' | head -1
-}
-
-# Helper: extract ID from add command output "Added <ID> <title>"
-extract_id_from_add() {
-  echo "$1" | awk '{print $2}'
+  echo "$1" | awk '{print $1}'
 }

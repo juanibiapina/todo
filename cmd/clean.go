@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List todo items",
-	Long:  `List all todo items for the current directory.`,
+var cleanCmd = &cobra.Command{
+	Use:   "clean",
+	Short: "Delete all checked items",
+	Long:  `Remove all checked todo items for the current directory.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
@@ -25,23 +25,16 @@ var listCmd = &cobra.Command{
 		}
 		defer s.Close()
 
-		items, err := s.List(dir)
+		n, err := s.Clean(dir)
 		if err != nil {
 			return err
 		}
 
-		for _, item := range items {
-			check := " "
-			if item.Checked {
-				check = "x"
-			}
-			fmt.Printf("%d [%s] %s\n", item.ID, check, item.Text)
-		}
-
+		fmt.Printf("Deleted %d item(s)\n", n)
 		return nil
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(cleanCmd)
 }

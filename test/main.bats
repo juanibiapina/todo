@@ -2,31 +2,19 @@
 
 load test_helper
 
-@test "version: --version flag shows version" {
+@test "version: shows version" {
   run todo --version
   assert_success
   assert_output --partial "todo version"
 }
 
-@test "help: --help flag shows usage" {
+@test "help: shows help" {
   run todo --help
   assert_success
-  assert_output --partial "A CLI for managing tickets stored as markdown"
-  assert_output --partial "Available Commands"
+  assert_output --partial "simple todo items"
 }
 
-@test "unknown command: returns error" {
+@test "unknown command: fails" {
   run todo nonexistent
   assert_failure
-  assert_output --partial "unknown command"
-}
-
-@test "help: shows all subcommands" {
-  run todo --help
-  assert_success
-  assert_output --partial "add"
-  assert_output --partial "list"
-  assert_output --partial "show"
-  assert_output --partial "done"
-  assert_output --partial "set-description"
 }
