@@ -96,7 +96,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q", "esc", "ctrl+c":
 		return m, tea.Quit
 
 	case "j", "down":
@@ -211,7 +211,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • space: toggle • a: add • e: edit • d: clean • q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • space: toggle • a: add • e: edit • d: clean • esc/q: quit"))
 	}
 	b.WriteString("\n")
 
