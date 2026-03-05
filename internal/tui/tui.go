@@ -24,6 +24,7 @@ type mode int
 const (
 	modeNormal mode = iota
 	modeAdd
+	modeEdit
 )
 
 type Model struct {
@@ -84,8 +85,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.mode == modeAdd {
-			return m.updateAdd(msg)
+		if m.mode == modeAdd || m.mode == modeEdit {
+			return m.updateInput(msg)
 		}
 		return m.updateNormal(msg)
 	}
@@ -121,6 +122,16 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.input.Focus()
 		return m, m.input.Cursor.BlinkCmd()
 
+	case "e":
+		if len(m.items) > 0 {
+			m.mode = modeEdit
+			m.input.Reset()
+			m.input.SetValue(m.items[m.cursor].Text)
+			m.input.CursorEnd()
+			m.input.Focus()
+			return m, m.input.Cursor.BlinkCmd()
+		}
+
 	case "d":
 		m.store.Clean(m.directory)
 		return m, m.loadItems
@@ -129,12 +140,18 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) updateAdd(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		text := strings.TrimSpace(m.input.Value())
-		if text != "" {
-			m.store.Add(m.directory, text)
+		if m.mode == modeEdit {
+			if text != "" && len(m.items) > 0 {
+				m.store.Edit(m.directory, m.items[m.cursor].ID, text)
+			}
+		} else {
+			if text != "" {
+				m.store.Add(m.directory, text)
+			}
 		}
 		m.mode = modeNormal
 		m.input.Blur()
@@ -184,17 +201,17 @@ func (m Model) View() string {
 		b.WriteString(fmt.Sprintf("%s%s %s %s\n", cursor, id, check, text))
 	}
 
-	if m.mode == modeAdd {
+	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString("\n")
 		b.WriteString("  " + m.input.View())
 		b.WriteString("\n")
 	}
 
 	b.WriteString("\n")
-	if m.mode == modeAdd {
+	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • space: toggle • a: add • d: clean • q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • space: toggle • a: add • e: edit • d: clean • q: quit"))
 	}
 	b.WriteString("\n")
 

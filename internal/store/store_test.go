@@ -232,6 +232,59 @@ func TestGetNotFound(t *testing.T) {
 	}
 }
 
+func TestEdit(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Old text")
+
+	err := s.Edit("/d", item.ID, "New text")
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.Text != "New text" {
+		t.Errorf("expected 'New text', got %q", got.Text)
+	}
+}
+
+func TestEditNotFound(t *testing.T) {
+	s := openTestStore(t)
+
+	err := s.Edit("/d", 999, "Whatever")
+	if err == nil {
+		t.Fatal("expected error for non-existent item")
+	}
+}
+
+func TestEditWrongDirectory(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/dir-a", "Task")
+
+	err := s.Edit("/dir-b", item.ID, "Nope")
+	if err == nil {
+		t.Fatal("expected error for wrong directory")
+	}
+}
+
+func TestEditPreservesCheckedState(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+	s.Check("/d", item.ID)
+
+	s.Edit("/d", item.ID, "Updated task")
+
+	got, _ := s.Get("/d", item.ID)
+	if !got.Checked {
+		t.Error("expected item to remain checked after edit")
+	}
+	if got.Text != "Updated task" {
+		t.Errorf("expected 'Updated task', got %q", got.Text)
+	}
+}
+
 func TestClean(t *testing.T) {
 	s := openTestStore(t)
 

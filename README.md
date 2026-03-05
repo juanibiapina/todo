@@ -53,6 +53,12 @@ Output:
 2 [ ] Fix the login bug
 ```
 
+### Edit an item
+
+```bash
+todo edit 1 Buy eggs instead
+```
+
 ### Check / uncheck items
 
 ```bash
@@ -76,6 +82,7 @@ Keybindings:
 - `j`/`k` or arrows: move cursor
 - `space` or `enter`: toggle checked
 - `a`: add new item
+- `e`: edit selected item
 - `d`: delete all checked items
 - `q`: quit
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `todo edit <id> <text>...` command to replace the text of an item
+- TUI `e` keybinding to edit the selected item inline
+
 ## [2.0.0] - 2026-03-05
 
 ### Added
