@@ -71,6 +71,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// 2 for "  " prefix, 2 for "> " prompt
+		m.input.Width = max(0, m.width-4)
 		return m, nil
 
 	case itemsLoadedMsg:
@@ -196,9 +198,27 @@ func (m Model) View() string {
 		}
 
 		id := idStyle.Render(fmt.Sprintf("%d", item.ID))
-		text := textStyle.Render(item.Text)
 
-		b.WriteString(fmt.Sprintf("%s%s %s %s\n", cursor, id, check, text))
+		prefix := fmt.Sprintf("%s%s %s ", cursor, id, check)
+		prefixWidth := lipgloss.Width(prefix)
+
+		if m.width > 0 && prefixWidth < m.width {
+			availableWidth := m.width - prefixWidth
+			wrapped := lipgloss.NewStyle().Width(availableWidth).Render(item.Text)
+			lines := strings.Split(wrapped, "\n")
+			indent := strings.Repeat(" ", prefixWidth)
+			for j, line := range lines {
+				styledLine := textStyle.Render(line)
+				if j == 0 {
+					b.WriteString(prefix + styledLine + "\n")
+				} else {
+					b.WriteString(indent + styledLine + "\n")
+				}
+			}
+		} else {
+			text := textStyle.Render(item.Text)
+			b.WriteString(fmt.Sprintf("%s%s %s %s\n", cursor, id, check, text))
+		}
 	}
 
 	if m.mode == modeAdd || m.mode == modeEdit {
