@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -111,11 +112,16 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor--
 		}
 
-	case " ", "enter":
+	case "enter":
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
 			m.store.Toggle(m.directory, item.ID)
 			return m, m.loadItems
+		}
+
+	case " ":
+		if len(m.items) > 0 {
+			clipboard.WriteAll(m.items[m.cursor].Text)
 		}
 
 	case "a":
@@ -231,7 +237,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • space: toggle • a: add • e: edit • d: clean • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • enter: toggle • space: copy • a: add • e: edit • d: clean • esc/q: quit"))
 	}
 	b.WriteString("\n")
 

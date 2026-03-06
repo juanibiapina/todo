@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- TUI `space` keybinding to copy the selected item's text to the clipboard
+
+### Changed
+
+- TUI `enter` now toggles items (previously both `space` and `enter` toggled)
+
 ### Fixed
 
 - TUI items now wrap within the terminal width, with continuation lines indented to align with the text
