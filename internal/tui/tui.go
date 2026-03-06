@@ -15,7 +15,6 @@ var (
 	checkedStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Strikethrough(true)
 	uncheckedStyle = lipgloss.NewStyle()
 	cursorStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
-	idStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	helpStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	titleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
 )
@@ -203,9 +202,7 @@ func (m Model) View() string {
 			textStyle = checkedStyle
 		}
 
-		id := idStyle.Render(fmt.Sprintf("%d", item.ID))
-
-		prefix := fmt.Sprintf("%s%s %s ", cursor, id, check)
+		prefix := fmt.Sprintf("%s%s ", cursor, check)
 		prefixWidth := lipgloss.Width(prefix)
 
 		if m.width > 0 && prefixWidth < m.width {
@@ -223,7 +220,7 @@ func (m Model) View() string {
 			}
 		} else {
 			text := textStyle.Render(item.Text)
-			b.WriteString(fmt.Sprintf("%s%s %s %s\n", cursor, id, check, text))
+			b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, check, text))
 		}
 	}
 

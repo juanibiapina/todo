@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- TUI item list no longer displays ID numbers, keeping all items aligned
 - TUI `enter` now toggles items (previously both `space` and `enter` toggled)
 
 ### Fixed
