@@ -207,6 +207,27 @@ func (s *Store) Edit(directory string, id int, text string) error {
 	return nil
 }
 
+// Delete removes a single item by ID and directory. Returns an error if the item
+// doesn't exist or doesn't belong to the given directory.
+func (s *Store) Delete(directory string, id int) error {
+	result, err := s.db.Exec(
+		"DELETE FROM items WHERE id = ? AND directory = ?",
+		id, directory,
+	)
+	if err != nil {
+		return err
+	}
+
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("item %d not found", id)
+	}
+	return nil
+}
+
 // Clean deletes all checked items for the given directory. Returns the number deleted.
 func (s *Store) Clean(directory string) (int, error) {
 	result, err := s.db.Exec(

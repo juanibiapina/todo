@@ -285,6 +285,46 @@ func TestEditPreservesCheckedState(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	s := openTestStore(t)
+
+	i1, _ := s.Add("/d", "Keep")
+	i2, _ := s.Add("/d", "Delete me")
+
+	err := s.Delete("/d", i2.ID)
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item remaining, got %d", len(items))
+	}
+	if items[0].ID != i1.ID {
+		t.Errorf("expected remaining item ID %d, got %d", i1.ID, items[0].ID)
+	}
+}
+
+func TestDeleteNotFound(t *testing.T) {
+	s := openTestStore(t)
+
+	err := s.Delete("/d", 999)
+	if err == nil {
+		t.Fatal("expected error for non-existent item")
+	}
+}
+
+func TestDeleteWrongDirectory(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/dir-a", "Task")
+
+	err := s.Delete("/dir-b", item.ID)
+	if err == nil {
+		t.Fatal("expected error for wrong directory")
+	}
+}
+
 func TestClean(t *testing.T) {
 	s := openTestStore(t)
 
