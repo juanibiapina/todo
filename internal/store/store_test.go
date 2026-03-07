@@ -389,6 +389,79 @@ func TestCleanIsolatesByDirectory(t *testing.T) {
 	}
 }
 
+func TestSwap(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	s.Add("/d", "Second")
+	s.Add("/d", "Third")
+
+	items, _ := s.List("/d")
+	// Swap first and second
+	err := s.Swap("/d", items[0].ID, items[1].ID)
+	if err != nil {
+		t.Fatalf("Swap: %v", err)
+	}
+
+	items, _ = s.List("/d")
+	if items[0].Text != "Second" {
+		t.Errorf("expected first item 'Second', got %q", items[0].Text)
+	}
+	if items[1].Text != "First" {
+		t.Errorf("expected second item 'First', got %q", items[1].Text)
+	}
+	if items[2].Text != "Third" {
+		t.Errorf("expected third item 'Third', got %q", items[2].Text)
+	}
+}
+
+func TestSwapNotFound(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+
+	err := s.Swap("/d", item.ID, 999)
+	if err == nil {
+		t.Fatal("expected error for non-existent item")
+	}
+}
+
+func TestSwapWrongDirectory(t *testing.T) {
+	s := openTestStore(t)
+
+	i1, _ := s.Add("/dir-a", "A")
+	i2, _ := s.Add("/dir-b", "B")
+
+	err := s.Swap("/dir-a", i1.ID, i2.ID)
+	if err == nil {
+		t.Fatal("expected error for wrong directory")
+	}
+}
+
+func TestListOrderedByPositionAfterSwap(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	s.Add("/d", "Second")
+	s.Add("/d", "Third")
+
+	items, _ := s.List("/d")
+	// Move third to first position by swapping twice
+	s.Swap("/d", items[2].ID, items[1].ID)
+	s.Swap("/d", items[2].ID, items[0].ID)
+
+	items, _ = s.List("/d")
+	if items[0].Text != "Third" {
+		t.Errorf("expected first 'Third', got %q", items[0].Text)
+	}
+	if items[1].Text != "First" {
+		t.Errorf("expected second 'First', got %q", items[1].Text)
+	}
+	if items[2].Text != "Second" {
+		t.Errorf("expected third 'Second', got %q", items[2].Text)
+	}
+}
+
 func TestDefaultDBPath(t *testing.T) {
 	// Test TODO_DB override
 	t.Setenv("TODO_DB", "/custom/path.db")

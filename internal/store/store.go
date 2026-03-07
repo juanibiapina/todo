@@ -65,18 +65,62 @@ func migrate(db *sql.DB) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			directory TEXT NOT NULL,
 			text TEXT NOT NULL,
-			checked INTEGER NOT NULL DEFAULT 0
+			checked INTEGER NOT NULL DEFAULT 0,
+			position INTEGER NOT NULL DEFAULT 0
 		);
 		CREATE INDEX IF NOT EXISTS idx_items_directory ON items(directory);
 	`)
+	if err != nil {
+		return err
+	}
+
+	// Add position column for existing databases.
+	if !hasColumn(db, "items", "position") {
+		_, err = db.Exec(`ALTER TABLE items ADD COLUMN position INTEGER NOT NULL DEFAULT 0`)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Initialize positions for any items that don't have one.
+	_, err = db.Exec(`UPDATE items SET position = id WHERE position = 0`)
 	return err
+}
+
+func hasColumn(db *sql.DB, table, column string) bool {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull int
+		var dfltValue *string
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dfltValue, &pk); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
 }
 
 // Add inserts a new unchecked item for the given directory.
 func (s *Store) Add(directory, text string) (*Item, error) {
+	var maxPos sql.NullInt64
+	s.db.QueryRow("SELECT MAX(position) FROM items WHERE directory = ?", directory).Scan(&maxPos)
+	newPos := 1
+	if maxPos.Valid {
+		newPos = int(maxPos.Int64) + 1
+	}
+
 	result, err := s.db.Exec(
-		"INSERT INTO items (directory, text, checked) VALUES (?, ?, 0)",
-		directory, text,
+		"INSERT INTO items (directory, text, checked, position) VALUES (?, ?, 0, ?)",
+		directory, text, newPos,
 	)
 	if err != nil {
 		return nil, err
@@ -98,7 +142,7 @@ func (s *Store) Add(directory, text string) (*Item, error) {
 // List returns all items for the given directory, ordered by ID.
 func (s *Store) List(directory string) ([]*Item, error) {
 	rows, err := s.db.Query(
-		"SELECT id, directory, text, checked FROM items WHERE directory = ? ORDER BY id",
+		"SELECT id, directory, text, checked FROM items WHERE directory = ? ORDER BY position",
 		directory,
 	)
 	if err != nil {
@@ -226,6 +270,36 @@ func (s *Store) Delete(directory string, id int) error {
 		return fmt.Errorf("item %d not found", id)
 	}
 	return nil
+}
+
+// Swap exchanges the positions of two items within the same directory.
+func (s *Store) Swap(directory string, id1, id2 int) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var pos1, pos2 int
+	err = tx.QueryRow("SELECT position FROM items WHERE id = ? AND directory = ?", id1, directory).Scan(&pos1)
+	if err != nil {
+		return fmt.Errorf("item %d not found", id1)
+	}
+	err = tx.QueryRow("SELECT position FROM items WHERE id = ? AND directory = ?", id2, directory).Scan(&pos2)
+	if err != nil {
+		return fmt.Errorf("item %d not found", id2)
+	}
+
+	_, err = tx.Exec("UPDATE items SET position = ? WHERE id = ? AND directory = ?", pos2, id1, directory)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE items SET position = ? WHERE id = ? AND directory = ?", pos1, id2, directory)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // Clean deletes all checked items for the given directory. Returns the number deleted.

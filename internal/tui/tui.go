@@ -111,6 +111,24 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor--
 		}
 
+	case "J":
+		if m.cursor < len(m.items)-1 {
+			item := m.items[m.cursor]
+			nextItem := m.items[m.cursor+1]
+			m.store.Swap(m.directory, item.ID, nextItem.ID)
+			m.cursor++
+			return m, m.loadItems
+		}
+
+	case "K":
+		if m.cursor > 0 {
+			item := m.items[m.cursor]
+			prevItem := m.items[m.cursor-1]
+			m.store.Swap(m.directory, item.ID, prevItem.ID)
+			m.cursor--
+			return m, m.loadItems
+		}
+
 	case "enter":
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
@@ -245,7 +263,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • enter: toggle • space: copy • a: add • e: edit • d: done/delete • c: clean • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • enter: toggle • space: copy • a: add • e: edit • d: done/delete • c: clean • esc/q: quit"))
 	}
 	b.WriteString("\n")
 

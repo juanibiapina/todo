@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- TUI `J`/`K` (Shift+J/K) keybindings to reorder items by swapping with adjacent items
+
 ## [2.3.0] - 2026-03-07
 
 ### Changed
