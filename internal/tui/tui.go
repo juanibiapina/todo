@@ -212,6 +212,15 @@ func (m Model) View() string {
 	var b strings.Builder
 
 	b.WriteString(titleStyle.Render("Todo"))
+	if total := len(m.items); total > 0 {
+		checked := 0
+		for _, item := range m.items {
+			if item.Checked {
+				checked++
+			}
+		}
+		b.WriteString(helpStyle.Render(fmt.Sprintf(" %d/%d", checked, total)))
+	}
 	b.WriteString("\n\n")
 
 	if len(m.items) == 0 && m.mode != modeAdd {
