@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-03-07
+
+### Changed
+
+- TUI `d` keybinding now marks unchecked items as done, or deletes checked items
+- TUI bulk clean moved from `d` to `c` keybinding
+
 ## [2.2.0] - 2026-03-06
 
 ### Added
