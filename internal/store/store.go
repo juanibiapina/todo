@@ -336,15 +336,26 @@ func (s *Store) CleanIfNewDay(directory string) error {
 		return nil
 	}
 
-	// New day: clean checked items and update date
-	if _, err := s.Clean(directory); err != nil {
+	// New day: clean checked items and update date atomically
+	tx, err := s.db.Begin()
+	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec(
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		"DELETE FROM items WHERE directory = ? AND checked = 1",
+		directory,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
 		"UPDATE daily_clean SET last_date = ? WHERE directory = ?",
 		today, directory,
-	)
-	return err
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Clean deletes all checked items for the given directory. Returns the number deleted.

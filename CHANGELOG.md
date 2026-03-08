@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Auto-clean checked items when a new day begins (on `list`, `tui`, and bare `todo`)
+
 ## [2.4.0] - 2026-03-07
 
 ### Added
