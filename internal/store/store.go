@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -19,7 +20,8 @@ type Item struct {
 
 // Store provides access to the todo database.
 type Store struct {
-	db *sql.DB
+	db  *sql.DB
+	now func() time.Time
 }
 
 // DefaultDBPath returns the default database path, respecting XDG_DATA_HOME.
@@ -51,7 +53,7 @@ func Open(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("migrating database: %w", err)
 	}
 
-	return &Store{db: db}, nil
+	return &Store{db: db, now: time.Now}, nil
 }
 
 // Close closes the database.
@@ -69,6 +71,10 @@ func migrate(db *sql.DB) error {
 			position INTEGER NOT NULL DEFAULT 0
 		);
 		CREATE INDEX IF NOT EXISTS idx_items_directory ON items(directory);
+		CREATE TABLE IF NOT EXISTS daily_clean (
+			directory TEXT PRIMARY KEY,
+			last_date TEXT NOT NULL
+		);
 	`)
 	if err != nil {
 		return err
@@ -300,6 +306,45 @@ func (s *Store) Swap(directory string, id1, id2 int) error {
 	}
 
 	return tx.Commit()
+}
+
+// CleanIfNewDay automatically cleans checked items when a new day begins.
+// On first use for a directory, it records today's date without cleaning.
+// On subsequent days, it deletes all checked items before returning.
+func (s *Store) CleanIfNewDay(directory string) error {
+	today := s.now().Format("2006-01-02")
+
+	var lastDate string
+	err := s.db.QueryRow(
+		"SELECT last_date FROM daily_clean WHERE directory = ?",
+		directory,
+	).Scan(&lastDate)
+
+	if err == sql.ErrNoRows {
+		// First use: record today, don't clean
+		_, err = s.db.Exec(
+			"INSERT INTO daily_clean (directory, last_date) VALUES (?, ?)",
+			directory, today,
+		)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	if lastDate == today {
+		return nil
+	}
+
+	// New day: clean checked items and update date
+	if _, err := s.Clean(directory); err != nil {
+		return err
+	}
+	_, err = s.db.Exec(
+		"UPDATE daily_clean SET last_date = ? WHERE directory = ?",
+		today, directory,
+	)
+	return err
 }
 
 // Clean deletes all checked items for the given directory. Returns the number deleted.

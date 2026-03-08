@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func openTestStore(t *testing.T) *Store {
@@ -497,5 +498,150 @@ func TestOpenCreatesDirectory(t *testing.T) {
 
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		t.Error("expected database file to exist")
+	}
+}
+
+func makeTime(year int, month time.Month, day int) time.Time {
+	return time.Date(year, month, day, 12, 0, 0, 0, time.UTC)
+}
+
+func TestCleanIfNewDayFirstRun(t *testing.T) {
+	s := openTestStore(t)
+	s.now = func() time.Time { return makeTime(2025, 3, 8) }
+
+	item, _ := s.Add("/d", "Task")
+	s.Check("/d", item.ID)
+
+	err := s.CleanIfNewDay("/d")
+	if err != nil {
+		t.Fatalf("CleanIfNewDay: %v", err)
+	}
+
+	// First run should NOT clean — checked item remains
+	items, _ := s.List("/d")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (first run should not clean), got %d", len(items))
+	}
+	if !items[0].Checked {
+		t.Error("expected item to still be checked")
+	}
+}
+
+func TestCleanIfNewDaySameDay(t *testing.T) {
+	s := openTestStore(t)
+	s.now = func() time.Time { return makeTime(2025, 3, 8) }
+
+	// First call to seed the date
+	s.CleanIfNewDay("/d")
+
+	item, _ := s.Add("/d", "Task")
+	s.Check("/d", item.ID)
+
+	// Same day — should not clean
+	err := s.CleanIfNewDay("/d")
+	if err != nil {
+		t.Fatalf("CleanIfNewDay: %v", err)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (same day should not clean), got %d", len(items))
+	}
+}
+
+func TestCleanIfNewDayNewDay(t *testing.T) {
+	s := openTestStore(t)
+	day1 := makeTime(2025, 3, 8)
+	day2 := makeTime(2025, 3, 9)
+	s.now = func() time.Time { return day1 }
+
+	// Day 1: seed the date
+	s.CleanIfNewDay("/d")
+
+	// Add items and check some
+	i1, _ := s.Add("/d", "Keep this")
+	i2, _ := s.Add("/d", "Remove this")
+	s.Check("/d", i2.ID)
+
+	// Advance to day 2
+	s.now = func() time.Time { return day2 }
+
+	err := s.CleanIfNewDay("/d")
+	if err != nil {
+		t.Fatalf("CleanIfNewDay: %v", err)
+	}
+
+	// Checked items should be gone
+	items, _ := s.List("/d")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item after new-day clean, got %d", len(items))
+	}
+	if items[0].ID != i1.ID {
+		t.Errorf("expected remaining item ID %d, got %d", i1.ID, items[0].ID)
+	}
+}
+
+func TestCleanIfNewDayDirectoryIsolation(t *testing.T) {
+	s := openTestStore(t)
+	day1 := makeTime(2025, 3, 8)
+	day2 := makeTime(2025, 3, 9)
+	s.now = func() time.Time { return day1 }
+
+	// Seed both directories on day 1
+	s.CleanIfNewDay("/dir-a")
+	s.CleanIfNewDay("/dir-b")
+
+	// Add checked items in both
+	ia, _ := s.Add("/dir-a", "A checked")
+	s.Check("/dir-a", ia.ID)
+	ib, _ := s.Add("/dir-b", "B checked")
+	s.Check("/dir-b", ib.ID)
+
+	// Advance to day 2, clean only dir-a
+	s.now = func() time.Time { return day2 }
+	s.CleanIfNewDay("/dir-a")
+
+	// dir-a should be cleaned
+	itemsA, _ := s.List("/dir-a")
+	if len(itemsA) != 0 {
+		t.Errorf("expected 0 items in dir-a, got %d", len(itemsA))
+	}
+
+	// dir-b should still have its checked item
+	itemsB, _ := s.List("/dir-b")
+	if len(itemsB) != 1 {
+		t.Errorf("expected 1 item in dir-b, got %d", len(itemsB))
+	}
+}
+
+func TestCleanIfNewDayUpdatesDate(t *testing.T) {
+	s := openTestStore(t)
+	day1 := makeTime(2025, 3, 8)
+	day2 := makeTime(2025, 3, 9)
+	s.now = func() time.Time { return day1 }
+
+	s.CleanIfNewDay("/d")
+
+	// Add and check an item on day 1
+	i1, _ := s.Add("/d", "Day 1 task")
+	s.Check("/d", i1.ID)
+
+	// Day 2: clean happens
+	s.now = func() time.Time { return day2 }
+	s.CleanIfNewDay("/d")
+
+	// Add and check a new item on day 2
+	i2, _ := s.Add("/d", "Day 2 task")
+	s.Check("/d", i2.ID)
+
+	// Same day 2 call again: should NOT clean
+	s.CleanIfNewDay("/d")
+
+	items, _ := s.List("/d")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (same day should not re-clean), got %d", len(items))
+	}
+	if items[0].ID != i2.ID {
+		t.Errorf("expected remaining item ID %d, got %d", i2.ID, items[0].ID)
 	}
 }

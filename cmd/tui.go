@@ -26,6 +26,10 @@ var tuiCmd = &cobra.Command{
 		}
 		defer s.Close()
 
+		if err := s.CleanIfNewDay(dir); err != nil {
+			return err
+		}
+
 		m := tui.New(s, dir)
 		p := tea.NewProgram(m, tea.WithAltScreen())
 		_, err = p.Run()

@@ -25,6 +25,10 @@ var listCmd = &cobra.Command{
 		}
 		defer s.Close()
 
+		if err := s.CleanIfNewDay(dir); err != nil {
+			return err
+		}
+
 		items, err := s.List(dir)
 		if err != nil {
 			return err
