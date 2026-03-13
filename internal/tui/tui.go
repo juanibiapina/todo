@@ -17,6 +17,7 @@ var (
 	cursorStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
 	helpStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	titleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
+	sectionStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
 )
 
 type mode int
@@ -132,8 +133,10 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
-			m.store.Toggle(m.directory, item.ID)
-			return m, m.loadItems
+			if !item.IsSection {
+				m.store.Toggle(m.directory, item.ID)
+				return m, m.loadItems
+			}
 		}
 
 	case " ":
@@ -147,8 +150,17 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.input.Focus()
 		return m, m.input.Cursor.BlinkCmd()
 
-	case "e":
+	case "s":
 		if len(m.items) > 0 {
+			m.store.InsertSectionAfter(m.directory, m.items[m.cursor].ID)
+			m.cursor++
+		} else {
+			m.store.AddSection(m.directory)
+		}
+		return m, m.loadItems
+
+	case "e":
+		if len(m.items) > 0 && !m.items[m.cursor].IsSection {
 			m.mode = modeEdit
 			m.input.Reset()
 			m.input.SetValue(m.items[m.cursor].Text)
@@ -160,7 +172,9 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
-			if item.Checked {
+			if item.IsSection {
+				m.store.Delete(m.directory, item.ID)
+			} else if item.Checked {
 				m.store.Delete(m.directory, item.ID)
 			} else {
 				m.store.Check(m.directory, item.ID)
@@ -186,7 +200,12 @@ func (m Model) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			if text != "" {
-				m.store.Add(m.directory, text)
+				if len(m.items) > 0 {
+					m.store.InsertItemAfter(m.directory, text, m.items[m.cursor].ID)
+					m.cursor++
+				} else {
+					m.store.Add(m.directory, text)
+				}
 			}
 		}
 		m.mode = modeNormal
@@ -222,6 +241,16 @@ func (m Model) View() string {
 		cursor := "  "
 		if i == m.cursor {
 			cursor = cursorStyle.Render("> ")
+		}
+
+		if item.IsSection {
+			rule := "──────────"
+			if m.width > 0 {
+				ruleWidth := max(0, m.width-lipgloss.Width(cursor))
+				rule = strings.Repeat("─", ruleWidth)
+			}
+			b.WriteString(cursor + sectionStyle.Render(rule) + "\n")
+			continue
 		}
 
 		check := "[ ]"
@@ -263,7 +292,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • enter: toggle • space: copy • a: add • e: edit • d: done/delete • c: clean • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • enter: toggle • space: copy • a: add • s: section • e: edit • d: done/delete • c: clean • esc/q: quit"))
 	}
 	b.WriteString("\n")
 

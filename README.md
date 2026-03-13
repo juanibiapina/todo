@@ -34,6 +34,15 @@ todo add Buy groceries
 todo add Fix the login bug
 ```
 
+### Add a section divider
+
+Sections are visual dividers that group items. They can't be checked or cleaned.
+
+```bash
+todo add --section
+todo add -s
+```
+
 ### List items
 
 ```bash
@@ -51,6 +60,8 @@ Output:
 ```
 1 [ ] Buy groceries
 2 [ ] Fix the login bug
+──────────
+3 [ ] Call dentist
 ```
 
 ### Edit an item
@@ -83,9 +94,10 @@ Keybindings:
 - `J`/`K` (Shift): reorder items
 - `enter`: toggle checked
 - `space`: copy item text to clipboard
-- `a`: add new item
+- `a`: add new item (after cursor)
+- `s`: add section divider (after cursor)
 - `e`: edit selected item
-- `d`: done (check) or delete (if already checked)
+- `d`: done (check), delete (if checked), or delete (if section)
 - `c`: clean (delete all checked items)
 - `q`/`esc`: quit
 

@@ -35,6 +35,10 @@ var listCmd = &cobra.Command{
 		}
 
 		for _, item := range items {
+			if item.IsSection {
+				fmt.Println("──────────")
+				continue
+			}
 			check := " "
 			if item.Checked {
 				check = "x"

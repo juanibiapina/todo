@@ -9,14 +9,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var addSection bool
+
 var addCmd = &cobra.Command{
 	Use:   "add <text>...",
 	Short: "Add a new todo item",
-	Long:  `Add a new unchecked todo item with the given text.`,
-	Args:  cobra.MinimumNArgs(1),
+	Long:  `Add a new unchecked todo item or section divider with the given text.`,
+	Args: cobra.MatchAll(func(cmd *cobra.Command, args []string) error {
+		if addSection {
+			if len(args) > 0 {
+				return fmt.Errorf("sections don't take text arguments")
+			}
+			return nil
+		}
+		if len(args) < 1 {
+			return fmt.Errorf("requires at least 1 arg(s), only received 0")
+		}
+		return nil
+	}),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		text := strings.Join(args, " ")
-
 		dir, err := os.Getwd()
 		if err != nil {
 			return err
@@ -28,6 +39,15 @@ var addCmd = &cobra.Command{
 		}
 		defer s.Close()
 
+		if addSection {
+			_, err = s.AddSection(dir)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		text := strings.Join(args, " ")
 		item, err := s.Add(dir, text)
 		if err != nil {
 			return err
@@ -39,5 +59,6 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
+	addCmd.Flags().BoolVarP(&addSection, "section", "s", false, "Add a section divider instead of a todo item")
 	rootCmd.AddCommand(addCmd)
 }

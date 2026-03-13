@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -503,6 +504,202 @@ func TestOpenCreatesDirectory(t *testing.T) {
 
 func makeTime(year int, month time.Month, day int) time.Time {
 	return time.Date(year, month, day, 12, 0, 0, 0, time.UTC)
+}
+
+func TestAddSection(t *testing.T) {
+	s := openTestStore(t)
+
+	item, err := s.AddSection("/d")
+	if err != nil {
+		t.Fatalf("AddSection: %v", err)
+	}
+	if !item.IsSection {
+		t.Error("expected IsSection to be true")
+	}
+	if item.Text != "" {
+		t.Errorf("expected empty text, got %q", item.Text)
+	}
+	if item.ID <= 0 {
+		t.Errorf("expected positive ID, got %d", item.ID)
+	}
+}
+
+func TestListReturnsSections(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "Task 1")
+	s.AddSection("/d")
+	s.Add("/d", "Task 2")
+
+	items, err := s.List("/d")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	if items[0].IsSection {
+		t.Error("expected first item to not be a section")
+	}
+	if !items[1].IsSection {
+		t.Error("expected second item to be a section")
+	}
+	if items[2].IsSection {
+		t.Error("expected third item to not be a section")
+	}
+}
+
+func TestCheckRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	err := s.Check("/d", section.ID)
+	if err == nil {
+		t.Fatal("expected error when checking a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestUncheckRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	err := s.Uncheck("/d", section.ID)
+	if err == nil {
+		t.Fatal("expected error when unchecking a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestEditRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	err := s.Edit("/d", section.ID, "text")
+	if err == nil {
+		t.Fatal("expected error when editing a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestToggleRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	_, err := s.Toggle("/d", section.ID)
+	if err == nil {
+		t.Fatal("expected error when toggling a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestInsertItemAfter(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	second, _ := s.Add("/d", "Second")
+	s.Add("/d", "Third")
+
+	inserted, err := s.InsertItemAfter("/d", "Between", second.ID)
+	if err != nil {
+		t.Fatalf("InsertItemAfter: %v", err)
+	}
+	if inserted.Text != "Between" {
+		t.Errorf("expected text 'Between', got %q", inserted.Text)
+	}
+	if inserted.IsSection {
+		t.Error("expected IsSection to be false")
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 4 {
+		t.Fatalf("expected 4 items, got %d", len(items))
+	}
+	texts := make([]string, len(items))
+	for i, item := range items {
+		texts[i] = item.Text
+	}
+	expected := []string{"First", "Second", "Between", "Third"}
+	for i, exp := range expected {
+		if texts[i] != exp {
+			t.Errorf("position %d: expected %q, got %q", i, exp, texts[i])
+		}
+	}
+}
+
+func TestInsertSectionAfter(t *testing.T) {
+	s := openTestStore(t)
+
+	first, _ := s.Add("/d", "First")
+	s.Add("/d", "Second")
+
+	section, err := s.InsertSectionAfter("/d", first.ID)
+	if err != nil {
+		t.Fatalf("InsertSectionAfter: %v", err)
+	}
+	if !section.IsSection {
+		t.Error("expected IsSection to be true")
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	if !items[1].IsSection {
+		t.Errorf("expected section at position 1, got isSection=%v", items[1].IsSection)
+	}
+}
+
+func TestCleanPreservesSections(t *testing.T) {
+	s := openTestStore(t)
+
+	s.AddSection("/d")
+	item, _ := s.Add("/d", "Task")
+	s.Check("/d", item.ID)
+
+	n, err := s.Clean("/d")
+	if err != nil {
+		t.Fatalf("Clean: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("expected 1 deleted, got %d", n)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item remaining, got %d", len(items))
+	}
+	if !items[0].IsSection {
+		t.Error("expected remaining item to be a section")
+	}
+}
+
+func TestSwapWithSection(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+	section, _ := s.AddSection("/d")
+
+	err := s.Swap("/d", item.ID, section.ID)
+	if err != nil {
+		t.Fatalf("Swap: %v", err)
+	}
+
+	items, _ := s.List("/d")
+	if !items[0].IsSection {
+		t.Error("expected section first")
+	}
+	if items[1].Text != "Task" {
+		t.Errorf("expected 'Task' second, got %q", items[1].Text)
+	}
 }
 
 func TestCleanIfNewDayFirstRun(t *testing.T) {

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Section dividers: `todo add --section` creates visual divider lines
+- Sections render as `──────────` in list output (no checkboxes, no IDs, no text)
+- `check`/`uncheck` on sections returns a clear error
+- `clean` preserves sections (they can't be checked)
+- TUI `s` keybinding to instantly add a section divider after the cursor
+- TUI `a` now inserts items after the cursor position instead of at the end
+- TUI renders sections as styled horizontal rules
+- TUI `d` on a section deletes it
+- TUI `enter` on a section is a no-op (sections can't be toggled)
+
 ## [2.5.0] - 2026-03-08
 
 ### Added
