@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- TUI `space` now toggles items (previously copied to clipboard)
+- TUI `c` now copies item text to clipboard (previously bulk clean)
+- TUI `C` (Shift+C) now bulk-cleans checked items (moved from `c`)
+- TUI `d` now always deletes the selected item (previously checked unchecked items first)
+
 ## [2.6.0] - 2026-03-13
 
 ### Added

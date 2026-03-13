@@ -141,7 +141,11 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case " ":
 		if len(m.items) > 0 {
-			clipboard.WriteAll(m.items[m.cursor].Text)
+			item := m.items[m.cursor]
+			if !item.IsSection {
+				m.store.Toggle(m.directory, item.ID)
+				return m, m.loadItems
+			}
 		}
 
 	case "a":
@@ -172,17 +176,16 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
-			if item.IsSection {
-				m.store.Delete(m.directory, item.ID)
-			} else if item.Checked {
-				m.store.Delete(m.directory, item.ID)
-			} else {
-				m.store.Check(m.directory, item.ID)
-			}
+			m.store.Delete(m.directory, item.ID)
 			return m, m.loadItems
 		}
 
 	case "c":
+		if len(m.items) > 0 {
+			clipboard.WriteAll(m.items[m.cursor].Text)
+		}
+
+	case "C":
 		m.store.Clean(m.directory)
 		return m, m.loadItems
 	}
@@ -292,7 +295,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • enter: toggle • space: copy • a: add • s: section • e: edit • d: done/delete • c: clean • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • a: add • s: section • e: edit • d: delete • c: copy • C: clean • esc/q: quit"))
 	}
 	b.WriteString("\n")
 
