@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- TUI add/edit inputs now render inline at the correct position in the list instead of at the bottom
+
 ## [2.7.0] - 2026-03-13
 
 ### Changed

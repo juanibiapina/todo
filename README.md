@@ -92,13 +92,13 @@ todo tui
 Keybindings:
 - `j`/`k` or arrows: move cursor
 - `J`/`K` (Shift): reorder items
-- `enter`: toggle checked
-- `space`: copy item text to clipboard
+- `space`/`enter`: toggle checked
 - `a`: add new item (after cursor)
 - `s`: add section divider (after cursor)
 - `e`: edit selected item
-- `d`: done (check), delete (if checked), or delete (if section)
-- `c`: clean (delete all checked items)
+- `d`: delete selected item
+- `c`: copy item text to clipboard
+- `C` (Shift): clean (delete all checked items)
 - `q`/`esc`: quit
 
 ## Storage

@@ -42,6 +42,7 @@ type Model struct {
 
 func New(s *store.Store, directory string) Model {
 	ti := textinput.New()
+	ti.Prompt = ""
 	ti.Placeholder = "New item..."
 	ti.CharLimit = 256
 
@@ -72,8 +73,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// 2 for "  " prefix, 2 for "> " prompt
-		m.input.Width = max(0, m.width-4)
+		// 2 for indent prefix, 4 for "[ ] "
+		m.input.Width = max(0, m.width-6)
 		return m, nil
 
 	case itemsLoadedMsg:
@@ -151,6 +152,7 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "a":
 		m.mode = modeAdd
 		m.input.Reset()
+		m.input.Placeholder = "New item..."
 		m.input.Focus()
 		return m, m.input.Cursor.BlinkCmd()
 
@@ -167,6 +169,7 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.items) > 0 && !m.items[m.cursor].IsSection {
 			m.mode = modeEdit
 			m.input.Reset()
+			m.input.Placeholder = "Edit item..."
 			m.input.SetValue(m.items[m.cursor].Text)
 			m.input.CursorEnd()
 			m.input.Focus()
@@ -236,13 +239,17 @@ func (m Model) View() string {
 	b.WriteString(titleStyle.Render("Todo"))
 	b.WriteString("\n\n")
 
-	if len(m.items) == 0 && m.mode != modeAdd {
-		b.WriteString("  No items. Press 'a' to add one.\n")
+	if len(m.items) == 0 {
+		if m.mode == modeAdd {
+			b.WriteString(cursorStyle.Render("> ") + "[ ] " + m.input.View() + "\n")
+		} else {
+			b.WriteString("  No items. Press 'a' to add one.\n")
+		}
 	}
 
 	for i, item := range m.items {
 		cursor := "  "
-		if i == m.cursor {
+		if i == m.cursor && m.mode != modeAdd {
 			cursor = cursorStyle.Render("> ")
 		}
 
@@ -253,42 +260,45 @@ func (m Model) View() string {
 				rule = strings.Repeat("─", ruleWidth)
 			}
 			b.WriteString(cursor + sectionStyle.Render(rule) + "\n")
-			continue
-		}
-
-		check := "[ ]"
-		textStyle := uncheckedStyle
-		if item.Checked {
-			check = "[x]"
-			textStyle = checkedStyle
-		}
-
-		prefix := fmt.Sprintf("%s%s ", cursor, check)
-		prefixWidth := lipgloss.Width(prefix)
-
-		if m.width > 0 && prefixWidth < m.width {
-			availableWidth := m.width - prefixWidth
-			wrapped := lipgloss.NewStyle().Width(availableWidth).Render(item.Text)
-			lines := strings.Split(wrapped, "\n")
-			indent := strings.Repeat(" ", prefixWidth)
-			for j, line := range lines {
-				styledLine := textStyle.Render(line)
-				if j == 0 {
-					b.WriteString(prefix + styledLine + "\n")
-				} else {
-					b.WriteString(indent + styledLine + "\n")
-				}
+		} else if m.mode == modeEdit && i == m.cursor {
+			check := "[ ]"
+			if item.Checked {
+				check = "[x]"
 			}
+			b.WriteString(cursorStyle.Render("> ") + check + " " + m.input.View() + "\n")
 		} else {
-			text := textStyle.Render(item.Text)
-			b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, check, text))
-		}
-	}
+			check := "[ ]"
+			textStyle := uncheckedStyle
+			if item.Checked {
+				check = "[x]"
+				textStyle = checkedStyle
+			}
 
-	if m.mode == modeAdd || m.mode == modeEdit {
-		b.WriteString("\n")
-		b.WriteString("  " + m.input.View())
-		b.WriteString("\n")
+			prefix := fmt.Sprintf("%s%s ", cursor, check)
+			prefixWidth := lipgloss.Width(prefix)
+
+			if m.width > 0 && prefixWidth < m.width {
+				availableWidth := m.width - prefixWidth
+				wrapped := lipgloss.NewStyle().Width(availableWidth).Render(item.Text)
+				lines := strings.Split(wrapped, "\n")
+				indent := strings.Repeat(" ", prefixWidth)
+				for j, line := range lines {
+					styledLine := textStyle.Render(line)
+					if j == 0 {
+						b.WriteString(prefix + styledLine + "\n")
+					} else {
+						b.WriteString(indent + styledLine + "\n")
+					}
+				}
+			} else {
+				text := textStyle.Render(item.Text)
+				b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, check, text))
+			}
+		}
+
+		if m.mode == modeAdd && i == m.cursor {
+			b.WriteString(cursorStyle.Render("> ") + "[ ] " + m.input.View() + "\n")
+		}
 	}
 
 	b.WriteString("\n")
