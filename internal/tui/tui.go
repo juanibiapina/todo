@@ -29,15 +29,16 @@ const (
 )
 
 type Model struct {
-	store     *store.Store
-	directory string
-	items     []*store.Item
-	cursor    int
-	mode      mode
-	input     textinput.Model
-	width     int
-	height    int
-	err       error
+	store        *store.Store
+	directory    string
+	items        []*store.Item
+	cursor       int
+	mode         mode
+	input        textinput.Model
+	width        int
+	height       int
+	scrollOffset int
+	err          error
 }
 
 func New(s *store.Store, directory string) Model {
@@ -50,6 +51,79 @@ func New(s *store.Store, directory string) Model {
 		store:     s,
 		directory: directory,
 		input:     ti,
+	}
+}
+
+// headerLines is the number of lines used by the fixed header ("Todo\n\n").
+const headerLines = 2
+
+// footerLines is the number of lines used by the fixed footer ("\n" + help text + "\n").
+const footerLines = 2
+
+// itemLineCount returns the number of terminal lines an item at index i
+// occupies, including the add-mode input line if applicable.
+func (m Model) itemLineCount(i int) int {
+	item := m.items[i]
+
+	lines := 1
+	if item.IsSection {
+		// Sections are always one line.
+	} else if m.mode == modeEdit && i == m.cursor {
+		// Editing replaces the item with a single-line input.
+	} else if m.width > 0 {
+		// Calculate wrapped line count.
+		prefixWidth := 6 // "  " (cursor) + "[ ] " (check + space)
+		if prefixWidth < m.width {
+			availableWidth := m.width - prefixWidth
+			wrapped := lipgloss.NewStyle().Width(availableWidth).Render(item.Text)
+			lines = len(strings.Split(wrapped, "\n"))
+		}
+	}
+
+	// Add mode inserts an input line after the cursor item.
+	if m.mode == modeAdd && i == m.cursor {
+		lines++
+	}
+
+	return lines
+}
+
+// ensureCursorVisible adjusts scrollOffset so the cursor item is fully
+// within the visible area of the viewport.
+func ensureCursorVisible(m *Model) {
+	if m.height == 0 || len(m.items) == 0 || m.cursor >= len(m.items) {
+		return
+	}
+
+	availableHeight := m.height - headerLines - footerLines
+	if availableHeight <= 0 {
+		return
+	}
+
+	// Calculate line range of the cursor item.
+	cursorStart := 0
+	for i := 0; i < m.cursor; i++ {
+		cursorStart += m.itemLineCount(i)
+	}
+	cursorEnd := cursorStart + m.itemLineCount(m.cursor)
+
+	// Scroll up if cursor is above viewport.
+	if cursorStart < m.scrollOffset {
+		m.scrollOffset = cursorStart
+	}
+	// Scroll down if cursor is below viewport.
+	if cursorEnd > m.scrollOffset+availableHeight {
+		m.scrollOffset = cursorEnd - availableHeight
+	}
+
+	// Clamp so we don't leave blank space at the bottom when the viewport
+	// grows (e.g. terminal resize) or items are deleted.
+	totalLines := cursorEnd // lines up to and including cursor
+	for i := m.cursor + 1; i < len(m.items); i++ {
+		totalLines += m.itemLineCount(i)
+	}
+	if maxOffset := max(0, totalLines-availableHeight); m.scrollOffset > maxOffset {
+		m.scrollOffset = maxOffset
 	}
 }
 
@@ -75,6 +149,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		// 2 for indent prefix, 4 for "[ ] "
 		m.input.Width = max(0, m.width-6)
+		ensureCursorVisible(&m)
 		return m, nil
 
 	case itemsLoadedMsg:
@@ -82,6 +157,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cursor >= len(m.items) {
 			m.cursor = max(0, len(m.items)-1)
 		}
+		ensureCursorVisible(&m)
 		return m, nil
 
 	case errMsg:
@@ -89,16 +165,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		var cmd tea.Cmd
 		if m.mode == modeAdd || m.mode == modeEdit {
-			return m.updateInput(msg)
+			m, cmd = m.updateInput(msg)
+		} else {
+			m, cmd = m.updateNormal(msg)
 		}
-		return m.updateNormal(msg)
+		ensureCursorVisible(&m)
+		return m, cmd
 	}
 
 	return m, nil
 }
 
-func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "esc", "ctrl+c":
 		return m, tea.Quit
@@ -196,7 +276,7 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		text := strings.TrimSpace(m.input.Value())
@@ -234,16 +314,14 @@ func (m Model) View() string {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
 
-	var b strings.Builder
-
-	b.WriteString(titleStyle.Render("Todo"))
-	b.WriteString("\n\n")
+	// Render all item lines into a slice.
+	var itemLines []string
 
 	if len(m.items) == 0 {
 		if m.mode == modeAdd {
-			b.WriteString(cursorStyle.Render("> ") + "[ ] " + m.input.View() + "\n")
+			itemLines = append(itemLines, cursorStyle.Render("> ")+"[ ] "+m.input.View())
 		} else {
-			b.WriteString("  No items. Press 'a' to add one.\n")
+			itemLines = append(itemLines, "  No items. Press 'a' to add one.")
 		}
 	}
 
@@ -259,13 +337,13 @@ func (m Model) View() string {
 				ruleWidth := max(0, m.width-lipgloss.Width(cursor))
 				rule = strings.Repeat("─", ruleWidth)
 			}
-			b.WriteString(cursor + sectionStyle.Render(rule) + "\n")
+			itemLines = append(itemLines, cursor+sectionStyle.Render(rule))
 		} else if m.mode == modeEdit && i == m.cursor {
 			check := "[ ]"
 			if item.Checked {
 				check = "[x]"
 			}
-			b.WriteString(cursorStyle.Render("> ") + check + " " + m.input.View() + "\n")
+			itemLines = append(itemLines, cursorStyle.Render("> ")+check+" "+m.input.View())
 		} else {
 			check := "[ ]"
 			textStyle := uncheckedStyle
@@ -285,22 +363,42 @@ func (m Model) View() string {
 				for j, line := range lines {
 					styledLine := textStyle.Render(line)
 					if j == 0 {
-						b.WriteString(prefix + styledLine + "\n")
+						itemLines = append(itemLines, prefix+styledLine)
 					} else {
-						b.WriteString(indent + styledLine + "\n")
+						itemLines = append(itemLines, indent+styledLine)
 					}
 				}
 			} else {
 				text := textStyle.Render(item.Text)
-				b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, check, text))
+				itemLines = append(itemLines, fmt.Sprintf("%s%s %s", cursor, check, text))
 			}
 		}
 
 		if m.mode == modeAdd && i == m.cursor {
-			b.WriteString(cursorStyle.Render("> ") + "[ ] " + m.input.View() + "\n")
+			itemLines = append(itemLines, cursorStyle.Render("> ")+"[ ] "+m.input.View())
 		}
 	}
 
+	// Clip to viewport.
+	availableHeight := len(itemLines)
+	if m.height > 0 {
+		availableHeight = max(1, m.height-headerLines-footerLines)
+	}
+
+	visibleStart := m.scrollOffset
+	if visibleStart > len(itemLines) {
+		visibleStart = max(0, len(itemLines)-availableHeight)
+	}
+	visibleEnd := min(visibleStart+availableHeight, len(itemLines))
+	visibleLines := itemLines[visibleStart:visibleEnd]
+
+	// Build output: header + visible lines + footer.
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("Todo"))
+	b.WriteString("\n\n")
+	for _, line := range visibleLines {
+		b.WriteString(line + "\n")
+	}
 	b.WriteString("\n")
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))

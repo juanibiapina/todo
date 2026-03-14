@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- TUI now scrolls to follow the cursor when the item list exceeds the terminal height
+
 ## [2.8.0] - 2026-03-13
 
 ### Changed
