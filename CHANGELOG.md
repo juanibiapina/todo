@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Active items: mark items you're currently focused on with `x` in the TUI
+- Active items float to the top of the list (both CLI and TUI)
+- `todo list` shows `(active)` after active item text
+- TUI highlights active items with bold yellow text
+- TUI shows a divider between active and non-active items
+
 ## [2.9.0] - 2026-03-14
 
 ### Fixed

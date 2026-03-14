@@ -702,6 +702,143 @@ func TestSwapWithSection(t *testing.T) {
 	}
 }
 
+func TestToggleActive(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+
+	// First toggle: inactive -> active
+	newState, err := s.ToggleActive("/d", item.ID)
+	if err != nil {
+		t.Fatalf("ToggleActive: %v", err)
+	}
+	if !newState {
+		t.Error("expected active after first toggle")
+	}
+
+	// Second toggle: active -> inactive
+	newState, err = s.ToggleActive("/d", item.ID)
+	if err != nil {
+		t.Fatalf("ToggleActive: %v", err)
+	}
+	if newState {
+		t.Error("expected inactive after second toggle")
+	}
+}
+
+func TestToggleActiveRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	_, err := s.ToggleActive("/d", section.ID)
+	if err == nil {
+		t.Fatal("expected error when toggling active on a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestToggleActiveWrongDirectory(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/dir-a", "Task")
+
+	_, err := s.ToggleActive("/dir-b", item.ID)
+	if err == nil {
+		t.Fatal("expected error for wrong directory")
+	}
+}
+
+func TestToggleActiveNotFound(t *testing.T) {
+	s := openTestStore(t)
+
+	_, err := s.ToggleActive("/d", 999)
+	if err == nil {
+		t.Fatal("expected error for non-existent item")
+	}
+}
+
+func TestListActiveItemsFirst(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	s.Add("/d", "Second")
+	third, _ := s.Add("/d", "Third")
+
+	s.ToggleActive("/d", third.ID)
+
+	items, _ := s.List("/d")
+	if items[0].Text != "Third" {
+		t.Errorf("expected active item 'Third' first, got %q", items[0].Text)
+	}
+	if items[1].Text != "First" {
+		t.Errorf("expected 'First' second, got %q", items[1].Text)
+	}
+	if items[2].Text != "Second" {
+		t.Errorf("expected 'Second' third, got %q", items[2].Text)
+	}
+}
+
+func TestListActivePreservesRelativeOrder(t *testing.T) {
+	s := openTestStore(t)
+
+	first, _ := s.Add("/d", "First")
+	s.Add("/d", "Second")
+	third, _ := s.Add("/d", "Third")
+
+	s.ToggleActive("/d", first.ID)
+	s.ToggleActive("/d", third.ID)
+
+	items, _ := s.List("/d")
+	if items[0].Text != "First" {
+		t.Errorf("expected 'First' first (active, lower position), got %q", items[0].Text)
+	}
+	if items[1].Text != "Third" {
+		t.Errorf("expected 'Third' second (active, higher position), got %q", items[1].Text)
+	}
+	if items[2].Text != "Second" {
+		t.Errorf("expected 'Second' third (not active), got %q", items[2].Text)
+	}
+}
+
+func TestListMultipleActive(t *testing.T) {
+	s := openTestStore(t)
+
+	first, _ := s.Add("/d", "First")
+	second, _ := s.Add("/d", "Second")
+	s.Add("/d", "Third")
+
+	s.ToggleActive("/d", first.ID)
+	s.ToggleActive("/d", second.ID)
+
+	items, _ := s.List("/d")
+	if !items[0].IsActive || !items[1].IsActive {
+		t.Error("expected first two items to be active")
+	}
+	if items[2].IsActive {
+		t.Error("expected third item to not be active")
+	}
+}
+
+func TestGetIncludesIsActive(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+
+	got, _ := s.Get("/d", item.ID)
+	if got.IsActive {
+		t.Error("expected IsActive to be false initially")
+	}
+
+	s.ToggleActive("/d", item.ID)
+
+	got, _ = s.Get("/d", item.ID)
+	if !got.IsActive {
+		t.Error("expected IsActive to be true after toggle")
+	}
+}
+
 func TestCleanIfNewDayFirstRun(t *testing.T) {
 	s := openTestStore(t)
 	s.now = func() time.Time { return makeTime(2025, 3, 8) }

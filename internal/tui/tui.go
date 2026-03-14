@@ -14,6 +14,7 @@ import (
 var (
 	checkedStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Strikethrough(true)
 	uncheckedStyle = lipgloss.NewStyle()
+	activeStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
 	cursorStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
 	helpStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	titleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
@@ -60,8 +61,22 @@ const headerLines = 2
 // footerLines is the number of lines used by the fixed footer ("\n" + help text + "\n").
 const footerLines = 2
 
+// activeDividerIndex returns the index of the first non-active item when
+// there are active items before it, or -1 if no divider is needed.
+func (m Model) activeDividerIndex() int {
+	if len(m.items) == 0 || !m.items[0].IsActive {
+		return -1
+	}
+	for i, item := range m.items {
+		if !item.IsActive {
+			return i
+		}
+	}
+	return -1 // all items are active
+}
+
 // itemLineCount returns the number of terminal lines an item at index i
-// occupies, including the add-mode input line if applicable.
+// occupies, including the add-mode input line and active divider if applicable.
 func (m Model) itemLineCount(i int) int {
 	item := m.items[i]
 
@@ -78,6 +93,11 @@ func (m Model) itemLineCount(i int) int {
 			wrapped := lipgloss.NewStyle().Width(availableWidth).Render(item.Text)
 			lines = len(strings.Split(wrapped, "\n"))
 		}
+	}
+
+	// Active divider adds a line before this item.
+	if i == m.activeDividerIndex() {
+		lines++
 	}
 
 	// Add mode inserts an input line after the cursor item.
@@ -256,6 +276,15 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, m.input.Cursor.BlinkCmd()
 		}
 
+	case "x":
+		if len(m.items) > 0 {
+			item := m.items[m.cursor]
+			if !item.IsSection {
+				m.store.ToggleActive(m.directory, item.ID)
+				return m, m.loadItems
+			}
+		}
+
 	case "d":
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
@@ -325,7 +354,20 @@ func (m Model) View() string {
 		}
 	}
 
+	dividerIdx := m.activeDividerIndex()
+
 	for i, item := range m.items {
+		// Insert a visual divider between active and non-active items.
+		if i == dividerIdx {
+			indent := "  "
+			rule := "──────────"
+			if m.width > 0 {
+				ruleWidth := max(0, m.width-lipgloss.Width(indent))
+				rule = strings.Repeat("─", ruleWidth)
+			}
+			itemLines = append(itemLines, indent+sectionStyle.Render(rule))
+		}
+
 		cursor := "  "
 		if i == m.cursor && m.mode != modeAdd {
 			cursor = cursorStyle.Render("> ")
@@ -350,6 +392,9 @@ func (m Model) View() string {
 			if item.Checked {
 				check = "[x]"
 				textStyle = checkedStyle
+			}
+			if item.IsActive {
+				textStyle = activeStyle
 			}
 
 			prefix := fmt.Sprintf("%s%s ", cursor, check)
@@ -403,7 +448,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • a: add • s: section • e: edit • d: delete • c: copy • C: clean • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • x: active • a: add • s: section • e: edit • d: delete • c: copy • C: clean • esc/q: quit"))
 	}
 	b.WriteString("\n")
 

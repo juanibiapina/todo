@@ -17,6 +17,7 @@ type Item struct {
 	Text      string
 	Checked   bool
 	IsSection bool
+	IsActive  bool
 }
 
 // Store provides access to the todo database.
@@ -70,7 +71,8 @@ func migrate(db *sql.DB) error {
 			text TEXT NOT NULL,
 			checked INTEGER NOT NULL DEFAULT 0,
 			position INTEGER NOT NULL DEFAULT 0,
-			is_section INTEGER NOT NULL DEFAULT 0
+			is_section INTEGER NOT NULL DEFAULT 0,
+			is_active INTEGER NOT NULL DEFAULT 0
 		);
 		CREATE INDEX IF NOT EXISTS idx_items_directory ON items(directory);
 		CREATE TABLE IF NOT EXISTS daily_clean (
@@ -93,6 +95,14 @@ func migrate(db *sql.DB) error {
 	// Add is_section column for existing databases.
 	if !hasColumn(db, "items", "is_section") {
 		_, err = db.Exec(`ALTER TABLE items ADD COLUMN is_section INTEGER NOT NULL DEFAULT 0`)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Add is_active column for existing databases.
+	if !hasColumn(db, "items", "is_active") {
+		_, err = db.Exec(`ALTER TABLE items ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0`)
 		if err != nil {
 			return err
 		}
@@ -155,10 +165,10 @@ func (s *Store) Add(directory, text string) (*Item, error) {
 	}, nil
 }
 
-// List returns all items for the given directory, ordered by position.
+// List returns all items for the given directory, ordered by active status (active first) then position.
 func (s *Store) List(directory string) ([]*Item, error) {
 	rows, err := s.db.Query(
-		"SELECT id, directory, text, checked, is_section FROM items WHERE directory = ? ORDER BY position",
+		"SELECT id, directory, text, checked, is_section, is_active FROM items WHERE directory = ? ORDER BY is_active DESC, position ASC",
 		directory,
 	)
 	if err != nil {
@@ -169,12 +179,13 @@ func (s *Store) List(directory string) ([]*Item, error) {
 	var items []*Item
 	for rows.Next() {
 		var item Item
-		var checked, isSection int
-		if err := rows.Scan(&item.ID, &item.Directory, &item.Text, &checked, &isSection); err != nil {
+		var checked, isSection, isActive int
+		if err := rows.Scan(&item.ID, &item.Directory, &item.Text, &checked, &isSection, &isActive); err != nil {
 			return nil, err
 		}
 		item.Checked = checked != 0
 		item.IsSection = isSection != 0
+		item.IsActive = isActive != 0
 		items = append(items, &item)
 	}
 	return items, rows.Err()
@@ -304,14 +315,41 @@ func (s *Store) Toggle(directory string, id int) (bool, error) {
 	return newState, nil
 }
 
+// ToggleActive flips the active state of an item. Returns the new state.
+// Returns an error if the item is a section.
+func (s *Store) ToggleActive(directory string, id int) (bool, error) {
+	item, err := s.Get(directory, id)
+	if err != nil {
+		return false, err
+	}
+
+	if item.IsSection {
+		return false, fmt.Errorf("item %d is a section", id)
+	}
+
+	newState := !item.IsActive
+	val := 0
+	if newState {
+		val = 1
+	}
+	_, err = s.db.Exec(
+		"UPDATE items SET is_active = ? WHERE id = ? AND directory = ?",
+		val, id, directory,
+	)
+	if err != nil {
+		return false, err
+	}
+	return newState, nil
+}
+
 // Get returns a single item by ID and directory.
 func (s *Store) Get(directory string, id int) (*Item, error) {
 	var item Item
-	var checked, isSection int
+	var checked, isSection, isActive int
 	err := s.db.QueryRow(
-		"SELECT id, directory, text, checked, is_section FROM items WHERE id = ? AND directory = ?",
+		"SELECT id, directory, text, checked, is_section, is_active FROM items WHERE id = ? AND directory = ?",
 		id, directory,
-	).Scan(&item.ID, &item.Directory, &item.Text, &checked, &isSection)
+	).Scan(&item.ID, &item.Directory, &item.Text, &checked, &isSection, &isActive)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("item %d not found", id)
 	}
@@ -320,6 +358,7 @@ func (s *Store) Get(directory string, id int) (*Item, error) {
 	}
 	item.Checked = checked != 0
 	item.IsSection = isSection != 0
+	item.IsActive = isActive != 0
 	return &item, nil
 }
 

@@ -67,3 +67,19 @@ load test_helper
   assert_success
   assert_output --partial "Hello world"
 }
+
+@test "list: shows active marker" {
+  local out1
+  out1="$(todo add Buy groceries)"
+  todo add Fix bug
+  local id1
+  id1="$(extract_id "${out1}")"
+
+  # Make first item active via database directly (no CLI subcommand yet)
+  sqlite3 "${TODO_DB}" "UPDATE items SET is_active = 1 WHERE id = ${id1}"
+
+  run todo list
+  assert_success
+  assert_output --partial "Buy groceries  (active)"
+  refute_output --partial "Fix bug  (active)"
+}

@@ -43,7 +43,11 @@ var listCmd = &cobra.Command{
 			if item.Checked {
 				check = "x"
 			}
-			fmt.Printf("%d [%s] %s\n", item.ID, check, item.Text)
+			active := ""
+			if item.IsActive {
+				active = "  (active)"
+			}
+			fmt.Printf("%d [%s] %s%s\n", item.ID, check, item.Text, active)
 		}
 
 		return nil

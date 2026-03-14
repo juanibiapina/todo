@@ -58,11 +58,13 @@ todo
 Output:
 
 ```
+3 [ ] Call dentist  (active)
 1 [ ] Buy groceries
 2 [ ] Fix the login bug
 ──────────
-3 [ ] Call dentist
 ```
+
+Active items appear at the top of the list. In the TUI, press `x` to toggle an item as active.
 
 ### Edit an item
 
@@ -93,6 +95,7 @@ Keybindings:
 - `j`/`k` or arrows: move cursor
 - `J`/`K` (Shift): reorder items
 - `space`/`enter`: toggle checked
+- `x`: toggle active (active items float to top)
 - `a`: add new item (after cursor)
 - `s`: add section divider (after cursor)
 - `e`: edit selected item
