@@ -64,7 +64,7 @@ Output:
 ──────────
 ```
 
-Active items appear at the top of the list. In the TUI, press `x` to toggle an item as active.
+Active items appear at the top of the list. In the TUI, press `x` to toggle an item as active. Checking an item as done automatically clears its active status.
 
 ### Edit an item
 

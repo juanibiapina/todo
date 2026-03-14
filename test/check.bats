@@ -59,3 +59,21 @@ load test_helper
   assert_failure
   assert_output --partial "not found"
 }
+
+@test "check: clears active status" {
+  local out
+  out="$(todo add Active task)"
+  local id
+  id="$(extract_id "${out}")"
+
+  sqlite3 "${TODO_DB}" "UPDATE items SET is_active = 1 WHERE id = ${id}"
+
+  # Verify it's active
+  run todo list
+  assert_output --partial "(active)"
+
+  # Check should clear active
+  todo check "${id}"
+  run todo list
+  refute_output --partial "(active)"
+}

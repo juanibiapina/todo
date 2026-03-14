@@ -372,14 +372,17 @@ func (s *Store) setChecked(directory string, id int, checked bool) error {
 		return fmt.Errorf("item %d is a section", id)
 	}
 
-	val := 0
 	if checked {
-		val = 1
+		_, err = s.db.Exec(
+			"UPDATE items SET checked = 1, is_active = 0 WHERE id = ? AND directory = ?",
+			id, directory,
+		)
+	} else {
+		_, err = s.db.Exec(
+			"UPDATE items SET checked = 0 WHERE id = ? AND directory = ?",
+			id, directory,
+		)
 	}
-	_, err = s.db.Exec(
-		"UPDATE items SET checked = ? WHERE id = ? AND directory = ?",
-		val, id, directory,
-	)
 	return err
 }
 

@@ -839,6 +839,63 @@ func TestGetIncludesIsActive(t *testing.T) {
 	}
 }
 
+func TestCheckClearsActive(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+	s.ToggleActive("/d", item.ID)
+
+	s.Check("/d", item.ID)
+
+	got, _ := s.Get("/d", item.ID)
+	if !got.Checked {
+		t.Error("expected item to be checked")
+	}
+	if got.IsActive {
+		t.Error("expected IsActive to be false after check")
+	}
+}
+
+func TestToggleToDoneClearsActive(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+	s.ToggleActive("/d", item.ID)
+
+	newState, err := s.Toggle("/d", item.ID)
+	if err != nil {
+		t.Fatalf("Toggle: %v", err)
+	}
+	if !newState {
+		t.Error("expected checked after toggle")
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.IsActive {
+		t.Error("expected IsActive to be false after toggling to done")
+	}
+}
+
+func TestUncheckDoesNotAffectActive(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+	s.ToggleActive("/d", item.ID)
+	s.Check("/d", item.ID)
+
+	// Item is now checked and inactive (check cleared active).
+	// Uncheck it and verify active stays false.
+	s.Uncheck("/d", item.ID)
+
+	got, _ := s.Get("/d", item.ID)
+	if got.Checked {
+		t.Error("expected item to be unchecked")
+	}
+	if got.IsActive {
+		t.Error("expected IsActive to remain false after uncheck")
+	}
+}
+
 func TestCleanIfNewDayFirstRun(t *testing.T) {
 	s := openTestStore(t)
 	s.now = func() time.Time { return makeTime(2025, 3, 8) }

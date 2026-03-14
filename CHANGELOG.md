@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `todo list` shows `(active)` after active item text
 - TUI highlights active items with bold yellow text
 - TUI shows a divider between active and non-active items
+- Checking an item as done automatically clears its active status
 
 ## [2.9.0] - 2026-03-14
 
