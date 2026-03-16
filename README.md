@@ -102,6 +102,7 @@ Keybindings:
 - `d`: delete selected item
 - `c`: copy item text to clipboard
 - `C` (Shift): clean (delete all checked items)
+- `/`: filter items (fuzzy search)
 - `q`/`esc`: quit
 
 ## Storage

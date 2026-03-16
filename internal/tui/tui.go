@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/juanibiapina/todo/internal/store"
+	"github.com/sahilm/fuzzy"
 )
 
 var (
@@ -27,6 +28,7 @@ const (
 	modeNormal mode = iota
 	modeAdd
 	modeEdit
+	modeFilter
 )
 
 type Model struct {
@@ -40,6 +42,13 @@ type Model struct {
 	height       int
 	scrollOffset int
 	err          error
+
+	// Filter mode state
+	filterInput       textinput.Model
+	filterMatches     fuzzy.Matches
+	filterItemIndexes []int // maps position in filterable slice → position in m.items
+	filterCursor      int
+	filterPrevCursor  int
 }
 
 func New(s *store.Store, directory string) Model {
@@ -48,10 +57,16 @@ func New(s *store.Store, directory string) Model {
 	ti.Placeholder = "New item..."
 	ti.CharLimit = 256
 
+	fi := textinput.New()
+	fi.Prompt = "/ "
+	fi.Placeholder = ""
+	fi.CharLimit = 256
+
 	return Model{
-		store:     s,
-		directory: directory,
-		input:     ti,
+		store:       s,
+		directory:   directory,
+		input:       ti,
+		filterInput: fi,
 	}
 }
 
@@ -111,6 +126,9 @@ func (m Model) itemLineCount(i int) int {
 // ensureCursorVisible adjusts scrollOffset so the cursor item is fully
 // within the visible area of the viewport.
 func ensureCursorVisible(m *Model) {
+	if m.mode == modeFilter {
+		return
+	}
 	if m.height == 0 || len(m.items) == 0 || m.cursor >= len(m.items) {
 		return
 	}
@@ -169,6 +187,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		// 2 for indent prefix, 4 for "[ ] "
 		m.input.Width = max(0, m.width-6)
+		// 2 for "/ " prompt
+		m.filterInput.Width = max(0, m.width-2)
 		ensureCursorVisible(&m)
 		return m, nil
 
@@ -186,9 +206,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		var cmd tea.Cmd
-		if m.mode == modeAdd || m.mode == modeEdit {
+		switch m.mode {
+		case modeAdd, modeEdit:
 			m, cmd = m.updateInput(msg)
-		} else {
+		case modeFilter:
+			m, cmd = m.updateFilter(msg)
+		default:
 			m, cmd = m.updateNormal(msg)
 		}
 		ensureCursorVisible(&m)
@@ -300,9 +323,91 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "C":
 		m.store.Clean(m.directory)
 		return m, m.loadItems
+
+	case "/":
+		m.mode = modeFilter
+		m.filterPrevCursor = m.cursor
+		m.filterInput.Reset()
+		m.filterInput.Focus()
+		m.filterCursor = 0
+		m.scrollOffset = 0
+		m.recomputeFilterMatches()
+		return m, m.filterInput.Cursor.BlinkCmd()
 	}
 
 	return m, nil
+}
+
+// buildFilterableItems returns the texts and index mapping for non-section items.
+func (m Model) buildFilterableItems() ([]string, []int) {
+	var texts []string
+	var indexes []int
+	for i, item := range m.items {
+		if !item.IsSection {
+			texts = append(texts, item.Text)
+			indexes = append(indexes, i)
+		}
+	}
+	return texts, indexes
+}
+
+// recomputeFilterMatches updates filterMatches based on current filterInput value.
+func (m *Model) recomputeFilterMatches() {
+	texts, indexes := m.buildFilterableItems()
+	m.filterItemIndexes = indexes
+	query := m.filterInput.Value()
+	if query == "" {
+		// Empty query: show all non-section items as matches.
+		m.filterMatches = make(fuzzy.Matches, len(texts))
+		for i := range texts {
+			m.filterMatches[i] = fuzzy.Match{
+				Str:   texts[i],
+				Index: i,
+			}
+		}
+	} else {
+		m.filterMatches = fuzzy.Find(query, texts)
+	}
+	m.filterCursor = 0
+}
+
+func (m Model) updateFilter(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		if len(m.filterMatches) > 0 {
+			match := m.filterMatches[m.filterCursor]
+			m.cursor = m.filterItemIndexes[match.Index]
+		} else {
+			m.cursor = m.filterPrevCursor
+		}
+		m.mode = modeNormal
+		m.filterInput.Blur()
+		return m, nil
+
+	case "esc":
+		m.cursor = m.filterPrevCursor
+		m.mode = modeNormal
+		m.filterInput.Blur()
+		return m, nil
+
+	case "ctrl+n":
+		if m.filterCursor < len(m.filterMatches)-1 {
+			m.filterCursor++
+		}
+		return m, nil
+
+	case "ctrl+p":
+		if m.filterCursor > 0 {
+			m.filterCursor--
+		}
+		return m, nil
+	}
+
+	// Pass to text input for typing.
+	var cmd tea.Cmd
+	m.filterInput, cmd = m.filterInput.Update(msg)
+	m.recomputeFilterMatches()
+	return m, cmd
 }
 
 func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -338,9 +443,77 @@ func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m Model) viewFilter() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("Todo"))
+	b.WriteString("\n\n")
+
+	// Filter input line.
+	b.WriteString(m.filterInput.View())
+	b.WriteString("\n")
+
+	// Render matched items.
+	if len(m.filterMatches) == 0 {
+		b.WriteString("  No matches.\n")
+	} else {
+		// filterHeaderLines accounts for title (2) + filter input (1).
+		filterHeaderLines := headerLines + 1
+		availableHeight := len(m.filterMatches)
+		if m.height > 0 {
+			availableHeight = max(1, m.height-filterHeaderLines-footerLines)
+		}
+
+		// Compute scroll offset for filter list.
+		filterScrollOffset := m.scrollOffset
+		if m.filterCursor < filterScrollOffset {
+			filterScrollOffset = m.filterCursor
+		}
+		if m.filterCursor >= filterScrollOffset+availableHeight {
+			filterScrollOffset = m.filterCursor - availableHeight + 1
+		}
+		if maxOffset := max(0, len(m.filterMatches)-availableHeight); filterScrollOffset > maxOffset {
+			filterScrollOffset = maxOffset
+		}
+
+		visibleEnd := min(filterScrollOffset+availableHeight, len(m.filterMatches))
+		for i := filterScrollOffset; i < visibleEnd; i++ {
+			match := m.filterMatches[i]
+			item := m.items[m.filterItemIndexes[match.Index]]
+
+			cursor := "  "
+			if i == m.filterCursor {
+				cursor = cursorStyle.Render("> ")
+			}
+
+			check := "[ ]"
+			textStyle := uncheckedStyle
+			if item.Checked {
+				check = "[x]"
+				textStyle = checkedStyle
+			}
+			if item.IsActive {
+				textStyle = activeStyle
+			}
+
+			text := textStyle.Render(item.Text)
+			b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, check, text))
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("  ctrl+n/ctrl+p: navigate • enter: select • esc: cancel"))
+	b.WriteString("\n")
+
+	return b.String()
+}
+
 func (m Model) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n", m.err)
+	}
+
+	if m.mode == modeFilter {
+		return m.viewFilter()
 	}
 
 	// Render all item lines into a slice.
@@ -448,7 +621,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • x: active • a: add • s: section • e: edit • d: delete • c: copy • C: clean • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • x: active • a: add • s: section • e: edit • d: delete • c: copy • C: clean • /: filter • esc/q: quit"))
 	}
 	b.WriteString("\n")
 
