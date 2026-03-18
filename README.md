@@ -4,6 +4,8 @@ A simple per-directory todo list.
 
 `todo` is a CLI for managing simple todo items stored in a Markdown file. Items are scoped to the directory where you run the command, so each project gets its own list.
 
+![demo](assets/demo.gif)
+
 ## Installation
 
 ### Homebrew
