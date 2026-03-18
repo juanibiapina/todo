@@ -114,6 +114,76 @@ func TestListIsolatesByDirectory(t *testing.T) {
 	}
 }
 
+func TestListAllEmpty(t *testing.T) {
+	s := openTestStore(t)
+
+	items, err := s.ListAll()
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(items) != 0 {
+		t.Errorf("expected 0 items, got %d", len(items))
+	}
+}
+
+func TestListAllReturnsItemsFromAllDirectories(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/dir-a", "Task A1")
+	s.Add("/dir-a", "Task A2")
+	s.Add("/dir-b", "Task B1")
+
+	items, err := s.ListAll()
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+}
+
+func TestListAllPreservesDirectoryField(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/dir-a", "Task A")
+	s.Add("/dir-b", "Task B")
+
+	items, err := s.ListAll()
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+
+	dirs := map[string]bool{}
+	for _, item := range items {
+		dirs[item.Directory] = true
+	}
+	if !dirs["/dir-a"] {
+		t.Error("expected /dir-a in results")
+	}
+	if !dirs["/dir-b"] {
+		t.Error("expected /dir-b in results")
+	}
+}
+
+func TestListAllActiveItemsFirstWithinDirectory(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "Normal")
+	active, _ := s.Add("/d", "Active")
+	s.ToggleActive("/d", active.ID)
+
+	items, err := s.ListAll()
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+	if !items[0].IsActive {
+		t.Errorf("expected active item first, got %q", items[0].Text)
+	}
+}
+
 func TestCheck(t *testing.T) {
 	s := openTestStore(t)
 
