@@ -11,8 +11,8 @@ setup() {
   # Put our binary first in PATH
   export PATH="${BATS_TEST_TMPDIR}:${PATH}"
 
-  # Use a per-test database so tests are isolated
-  export TODO_DB="${BATS_TEST_TMPDIR}/todo.db"
+  # Use a per-test file so tests are isolated
+  export TODO_FILE="${BATS_TEST_TMPDIR}/todo.md"
 
   # Create and cd into a temp working directory
   export TODO_TEST_DIR="${BATS_TEST_TMPDIR}/workdir"

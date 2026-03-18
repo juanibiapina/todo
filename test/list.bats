@@ -69,14 +69,11 @@ load test_helper
 }
 
 @test "list: shows active marker" {
-  local out1
-  out1="$(todo add Buy groceries)"
+  todo add Buy groceries
   todo add Fix bug
-  local id1
-  id1="$(extract_id "${out1}")"
 
-  # Make first item active via database directly (no CLI subcommand yet)
-  sqlite3 "${TODO_DB}" "UPDATE items SET is_active = 1 WHERE id = ${id1}"
+  # Make first item active by editing the Markdown file directly
+  sed -i.bak 's/^- \[ \] Buy groceries$/- [ ] Buy groceries @active/' "${TODO_FILE}" && rm -f "${TODO_FILE}.bak"
 
   run todo list
   assert_success

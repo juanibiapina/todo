@@ -4,6 +4,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/juanibiapina/todo/internal/config"
 	"github.com/juanibiapina/todo/internal/store"
 	"github.com/juanibiapina/todo/internal/tui"
 	"github.com/spf13/cobra"
@@ -20,7 +21,7 @@ var tuiCmd = &cobra.Command{
 			return err
 		}
 
-		s, err := store.Open(store.DefaultDBPath())
+		s, err := store.Open(config.DefaultFilePath())
 		if err != nil {
 			return err
 		}

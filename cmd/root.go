@@ -10,7 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "todo",
 	Short: "A simple per-directory todo list",
-	Long:  `A CLI for managing simple todo items stored in a SQLite database, scoped per directory.`,
+	Long:  `A CLI for managing simple todo items stored in a Markdown file, scoped per directory.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Default command: list
 		return listCmd.RunE(cmd, args)

@@ -1,13 +1,12 @@
 package store
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
-
-	_ "modernc.org/sqlite"
 )
 
 // Item represents a single todo item or section divider.
@@ -20,516 +19,613 @@ type Item struct {
 	IsActive  bool
 }
 
-// Store provides access to the todo database.
+// Store provides access to the todo file.
 type Store struct {
-	db  *sql.DB
-	now func() time.Time
+	filePath string
+	now      func() time.Time
 }
 
-// DefaultDBPath returns the default database path, respecting XDG_DATA_HOME.
-func DefaultDBPath() string {
-	if v := os.Getenv("TODO_DB"); v != "" {
-		return v
-	}
-	dataHome := os.Getenv("XDG_DATA_HOME")
-	if dataHome == "" {
-		home, _ := os.UserHomeDir()
-		dataHome = filepath.Join(home, ".local", "share")
-	}
-	return filepath.Join(dataHome, "todo", "todo.db")
+// Internal data model
+
+type fileData struct {
+	directories []*directoryData
 }
 
-// Open opens (or creates) the database at the given path.
-func Open(dbPath string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		return nil, fmt.Errorf("creating database directory: %w", err)
-	}
-
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("opening database: %w", err)
-	}
-
-	if err := migrate(db); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("migrating database: %w", err)
-	}
-
-	return &Store{db: db, now: time.Now}, nil
+type directoryData struct {
+	path      string // expanded (absolute) path
+	lastClean string // "YYYY-MM-DD" or "" if unset
+	items     []*fileItem
 }
 
-// Close closes the database.
+type fileItem struct {
+	text      string
+	checked   bool
+	isSection bool
+	isActive  bool
+}
+
+// Open creates a Store backed by the given Markdown file path.
+// Creates the parent directory if needed.
+func Open(filePath string) (*Store, error) {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return nil, fmt.Errorf("creating directory: %w", err)
+	}
+	return &Store{filePath: filePath, now: time.Now}, nil
+}
+
+// Close is a no-op for the Markdown backend.
 func (s *Store) Close() error {
-	return s.db.Close()
-}
-
-func migrate(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS items (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			directory TEXT NOT NULL,
-			text TEXT NOT NULL,
-			checked INTEGER NOT NULL DEFAULT 0,
-			position INTEGER NOT NULL DEFAULT 0,
-			is_section INTEGER NOT NULL DEFAULT 0,
-			is_active INTEGER NOT NULL DEFAULT 0
-		);
-		CREATE INDEX IF NOT EXISTS idx_items_directory ON items(directory);
-		CREATE TABLE IF NOT EXISTS daily_clean (
-			directory TEXT PRIMARY KEY,
-			last_date TEXT NOT NULL
-		);
-	`)
-	if err != nil {
-		return err
-	}
-
-	// Add position column for existing databases.
-	if !hasColumn(db, "items", "position") {
-		_, err = db.Exec(`ALTER TABLE items ADD COLUMN position INTEGER NOT NULL DEFAULT 0`)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Add is_section column for existing databases.
-	if !hasColumn(db, "items", "is_section") {
-		_, err = db.Exec(`ALTER TABLE items ADD COLUMN is_section INTEGER NOT NULL DEFAULT 0`)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Add is_active column for existing databases.
-	if !hasColumn(db, "items", "is_active") {
-		_, err = db.Exec(`ALTER TABLE items ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0`)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Initialize positions for any items that don't have one.
-	_, err = db.Exec(`UPDATE items SET position = id WHERE position = 0`)
-	return err
-}
-
-func hasColumn(db *sql.DB, table, column string) bool {
-	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
-	if err != nil {
-		return false
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var cid int
-		var name, typ string
-		var notnull int
-		var dfltValue *string
-		var pk int
-		if err := rows.Scan(&cid, &name, &typ, &notnull, &dfltValue, &pk); err != nil {
-			return false
-		}
-		if name == column {
-			return true
-		}
-	}
-	return false
+	return nil
 }
 
 // Add inserts a new unchecked item for the given directory.
 func (s *Store) Add(directory, text string) (*Item, error) {
-	var maxPos sql.NullInt64
-	s.db.QueryRow("SELECT MAX(position) FROM items WHERE directory = ?", directory).Scan(&maxPos)
-	newPos := 1
-	if maxPos.Valid {
-		newPos = int(maxPos.Int64) + 1
-	}
-
-	result, err := s.db.Exec(
-		"INSERT INTO items (directory, text, checked, position) VALUES (?, ?, 0, ?)",
-		directory, text, newPos,
-	)
+	data, err := s.readFile()
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
+	dir := getOrCreateDirectory(data, directory)
+	dir.items = append(dir.items, &fileItem{text: text})
+
+	if err := s.writeFile(data); err != nil {
 		return nil, err
 	}
 
+	id := len(dir.items)
 	return &Item{
-		ID:        int(id),
+		ID:        id,
 		Directory: directory,
 		Text:      text,
-		Checked:   false,
 	}, nil
-}
-
-// List returns all items for the given directory, ordered by active status (active first) then position.
-func (s *Store) List(directory string) ([]*Item, error) {
-	rows, err := s.db.Query(
-		"SELECT id, directory, text, checked, is_section, is_active FROM items WHERE directory = ? ORDER BY is_active DESC, position ASC",
-		directory,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var items []*Item
-	for rows.Next() {
-		var item Item
-		var checked, isSection, isActive int
-		if err := rows.Scan(&item.ID, &item.Directory, &item.Text, &checked, &isSection, &isActive); err != nil {
-			return nil, err
-		}
-		item.Checked = checked != 0
-		item.IsSection = isSection != 0
-		item.IsActive = isActive != 0
-		items = append(items, &item)
-	}
-	return items, rows.Err()
 }
 
 // AddSection inserts a new section divider for the given directory.
 func (s *Store) AddSection(directory string) (*Item, error) {
-	var maxPos sql.NullInt64
-	s.db.QueryRow("SELECT MAX(position) FROM items WHERE directory = ?", directory).Scan(&maxPos)
-	newPos := 1
-	if maxPos.Valid {
-		newPos = int(maxPos.Int64) + 1
-	}
-
-	result, err := s.db.Exec(
-		"INSERT INTO items (directory, text, checked, position, is_section) VALUES (?, '', 0, ?, 1)",
-		directory, newPos,
-	)
+	data, err := s.readFile()
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
+	dir := getOrCreateDirectory(data, directory)
+	dir.items = append(dir.items, &fileItem{isSection: true})
+
+	if err := s.writeFile(data); err != nil {
 		return nil, err
 	}
 
+	id := len(dir.items)
 	return &Item{
-		ID:        int(id),
+		ID:        id,
 		Directory: directory,
 		IsSection: true,
 	}, nil
 }
 
-// InsertItemAfter inserts a new item right after the given item's position.
+// InsertItemAfter inserts a new item right after the given position.
 func (s *Store) InsertItemAfter(directory, text string, afterID int) (*Item, error) {
 	return s.insertAfter(directory, text, afterID, false)
 }
 
-// InsertSectionAfter inserts a new section divider right after the given item's position.
+// InsertSectionAfter inserts a new section divider right after the given position.
 func (s *Store) InsertSectionAfter(directory string, afterID int) (*Item, error) {
 	return s.insertAfter(directory, "", afterID, true)
 }
 
 func (s *Store) insertAfter(directory, text string, afterID int, isSection bool) (*Item, error) {
-	tx, err := s.db.Begin()
+	data, err := s.readFile()
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
 
-	var afterPos int
-	err = tx.QueryRow("SELECT position FROM items WHERE id = ? AND directory = ?", afterID, directory).Scan(&afterPos)
-	if err != nil {
+	dir := findDirectory(data, directory)
+	if dir == nil || afterID < 1 || afterID > len(dir.items) {
 		return nil, fmt.Errorf("item %d not found", afterID)
 	}
 
-	newPos := afterPos + 1
+	newItem := &fileItem{text: text, isSection: isSection}
 
-	// Shift all items at or after newPos
-	_, err = tx.Exec(
-		"UPDATE items SET position = position + 1 WHERE directory = ? AND position >= ?",
-		directory, newPos,
-	)
-	if err != nil {
+	// Insert after afterID position (afterID is 1-based)
+	items := make([]*fileItem, 0, len(dir.items)+1)
+	items = append(items, dir.items[:afterID]...)
+	items = append(items, newItem)
+	items = append(items, dir.items[afterID:]...)
+	dir.items = items
+
+	if err := s.writeFile(data); err != nil {
 		return nil, err
 	}
 
-	isSectionVal := 0
-	if isSection {
-		isSectionVal = 1
-	}
-
-	result, err := tx.Exec(
-		"INSERT INTO items (directory, text, checked, position, is_section) VALUES (?, ?, 0, ?, ?)",
-		directory, text, newPos, isSectionVal,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
+	newID := afterID + 1
 	return &Item{
-		ID:        int(id),
+		ID:        newID,
 		Directory: directory,
 		Text:      text,
 		IsSection: isSection,
 	}, nil
 }
 
+// List returns all items for the given directory, ordered by active status
+// (active first) then position.
+func (s *Store) List(directory string) ([]*Item, error) {
+	data, err := s.readFile()
+	if err != nil {
+		return nil, err
+	}
+
+	dir := findDirectory(data, directory)
+	if dir == nil {
+		return nil, nil
+	}
+
+	items := make([]*Item, len(dir.items))
+	for i, fi := range dir.items {
+		items[i] = &Item{
+			ID:        i + 1,
+			Directory: directory,
+			Text:      fi.text,
+			Checked:   fi.checked,
+			IsSection: fi.isSection,
+			IsActive:  fi.isActive,
+		}
+	}
+
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].IsActive != items[j].IsActive {
+			return items[i].IsActive
+		}
+		return items[i].ID < items[j].ID
+	})
+
+	return items, nil
+}
+
+// Get returns a single item by position (1-based) within the directory.
+func (s *Store) Get(directory string, id int) (*Item, error) {
+	data, err := s.readFile()
+	if err != nil {
+		return nil, err
+	}
+
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
+		return nil, fmt.Errorf("item %d not found", id)
+	}
+
+	fi := dir.items[id-1]
+	return &Item{
+		ID:        id,
+		Directory: directory,
+		Text:      fi.text,
+		Checked:   fi.checked,
+		IsSection: fi.isSection,
+		IsActive:  fi.isActive,
+	}, nil
+}
+
 // Check marks an item as checked. Returns an error if the item doesn't exist
-// or doesn't belong to the given directory.
+// or is a section.
 func (s *Store) Check(directory string, id int) error {
 	return s.setChecked(directory, id, true)
 }
 
-// Uncheck marks an item as unchecked. Returns an error if the item doesn't exist
-// or doesn't belong to the given directory.
+// Uncheck marks an item as unchecked. Returns an error if the item doesn't
+// exist or is a section.
 func (s *Store) Uncheck(directory string, id int) error {
 	return s.setChecked(directory, id, false)
+}
+
+func (s *Store) setChecked(directory string, id int, checked bool) error {
+	data, err := s.readFile()
+	if err != nil {
+		return err
+	}
+
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
+		return fmt.Errorf("item %d not found", id)
+	}
+
+	fi := dir.items[id-1]
+	if fi.isSection {
+		return fmt.Errorf("item %d is a section", id)
+	}
+
+	fi.checked = checked
+	if checked {
+		fi.isActive = false
+	}
+
+	return s.writeFile(data)
 }
 
 // Toggle flips the checked state of an item. Returns the new state.
 // Returns an error if the item is a section.
 func (s *Store) Toggle(directory string, id int) (bool, error) {
-	item, err := s.Get(directory, id)
+	data, err := s.readFile()
 	if err != nil {
 		return false, err
 	}
 
-	if item.IsSection {
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
+		return false, fmt.Errorf("item %d not found", id)
+	}
+
+	fi := dir.items[id-1]
+	if fi.isSection {
 		return false, fmt.Errorf("item %d is a section", id)
 	}
 
-	newState := !item.Checked
-	if err := s.setChecked(directory, id, newState); err != nil {
+	fi.checked = !fi.checked
+	if fi.checked {
+		fi.isActive = false
+	}
+
+	if err := s.writeFile(data); err != nil {
 		return false, err
 	}
-	return newState, nil
+	return fi.checked, nil
 }
 
 // ToggleActive flips the active state of an item. Returns the new state.
 // Returns an error if the item is a section.
 func (s *Store) ToggleActive(directory string, id int) (bool, error) {
-	item, err := s.Get(directory, id)
+	data, err := s.readFile()
 	if err != nil {
 		return false, err
 	}
 
-	if item.IsSection {
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
+		return false, fmt.Errorf("item %d not found", id)
+	}
+
+	fi := dir.items[id-1]
+	if fi.isSection {
 		return false, fmt.Errorf("item %d is a section", id)
 	}
 
-	newState := !item.IsActive
-	val := 0
-	if newState {
-		val = 1
-	}
-	_, err = s.db.Exec(
-		"UPDATE items SET is_active = ? WHERE id = ? AND directory = ?",
-		val, id, directory,
-	)
-	if err != nil {
+	fi.isActive = !fi.isActive
+	if err := s.writeFile(data); err != nil {
 		return false, err
 	}
-	return newState, nil
+	return fi.isActive, nil
 }
 
-// Get returns a single item by ID and directory.
-func (s *Store) Get(directory string, id int) (*Item, error) {
-	var item Item
-	var checked, isSection, isActive int
-	err := s.db.QueryRow(
-		"SELECT id, directory, text, checked, is_section, is_active FROM items WHERE id = ? AND directory = ?",
-		id, directory,
-	).Scan(&item.ID, &item.Directory, &item.Text, &checked, &isSection, &isActive)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("item %d not found", id)
-	}
-	if err != nil {
-		return nil, err
-	}
-	item.Checked = checked != 0
-	item.IsSection = isSection != 0
-	item.IsActive = isActive != 0
-	return &item, nil
-}
-
-func (s *Store) setChecked(directory string, id int, checked bool) error {
-	item, err := s.Get(directory, id)
-	if err != nil {
-		return err
-	}
-
-	if item.IsSection {
-		return fmt.Errorf("item %d is a section", id)
-	}
-
-	if checked {
-		_, err = s.db.Exec(
-			"UPDATE items SET checked = 1, is_active = 0 WHERE id = ? AND directory = ?",
-			id, directory,
-		)
-	} else {
-		_, err = s.db.Exec(
-			"UPDATE items SET checked = 0 WHERE id = ? AND directory = ?",
-			id, directory,
-		)
-	}
-	return err
-}
-
-// Edit updates the text of an item. Returns an error if the item doesn't exist,
-// doesn't belong to the given directory, or is a section.
+// Edit updates the text of an item. Returns an error if the item doesn't exist
+// or is a section.
 func (s *Store) Edit(directory string, id int, text string) error {
-	item, err := s.Get(directory, id)
+	data, err := s.readFile()
 	if err != nil {
 		return err
 	}
 
-	if item.IsSection {
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
+		return fmt.Errorf("item %d not found", id)
+	}
+
+	fi := dir.items[id-1]
+	if fi.isSection {
 		return fmt.Errorf("item %d is a section", id)
 	}
 
-	result, err := s.db.Exec(
-		"UPDATE items SET text = ? WHERE id = ? AND directory = ?",
-		text, id, directory,
-	)
-	if err != nil {
-		return err
-	}
-
-	n, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return fmt.Errorf("item %d not found", id)
-	}
-	return nil
+	fi.text = text
+	return s.writeFile(data)
 }
 
-// Delete removes a single item by ID and directory. Returns an error if the item
-// doesn't exist or doesn't belong to the given directory.
+// Delete removes a single item by position. Returns an error if the item
+// doesn't exist.
 func (s *Store) Delete(directory string, id int) error {
-	result, err := s.db.Exec(
-		"DELETE FROM items WHERE id = ? AND directory = ?",
-		id, directory,
-	)
+	data, err := s.readFile()
 	if err != nil {
 		return err
 	}
 
-	n, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
 		return fmt.Errorf("item %d not found", id)
 	}
-	return nil
+
+	dir.items = append(dir.items[:id-1], dir.items[id:]...)
+	return s.writeFile(data)
 }
 
-// Swap exchanges the positions of two items within the same directory.
+// Swap exchanges two items at the given positions within the same directory.
 func (s *Store) Swap(directory string, id1, id2 int) error {
-	tx, err := s.db.Begin()
+	data, err := s.readFile()
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
 
-	var pos1, pos2 int
-	err = tx.QueryRow("SELECT position FROM items WHERE id = ? AND directory = ?", id1, directory).Scan(&pos1)
-	if err != nil {
+	dir := findDirectory(data, directory)
+	if dir == nil {
 		return fmt.Errorf("item %d not found", id1)
 	}
-	err = tx.QueryRow("SELECT position FROM items WHERE id = ? AND directory = ?", id2, directory).Scan(&pos2)
-	if err != nil {
+	if id1 < 1 || id1 > len(dir.items) {
+		return fmt.Errorf("item %d not found", id1)
+	}
+	if id2 < 1 || id2 > len(dir.items) {
 		return fmt.Errorf("item %d not found", id2)
 	}
 
-	_, err = tx.Exec("UPDATE items SET position = ? WHERE id = ? AND directory = ?", pos2, id1, directory)
+	dir.items[id1-1], dir.items[id2-1] = dir.items[id2-1], dir.items[id1-1]
+	return s.writeFile(data)
+}
+
+// Clean deletes all checked items for the given directory. Returns the count.
+func (s *Store) Clean(directory string) (int, error) {
+	data, err := s.readFile()
 	if err != nil {
-		return err
-	}
-	_, err = tx.Exec("UPDATE items SET position = ? WHERE id = ? AND directory = ?", pos1, id2, directory)
-	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return tx.Commit()
+	dir := findDirectory(data, directory)
+	if dir == nil {
+		return 0, nil
+	}
+
+	var remaining []*fileItem
+	count := 0
+	for _, fi := range dir.items {
+		if fi.checked && !fi.isSection {
+			count++
+		} else {
+			remaining = append(remaining, fi)
+		}
+	}
+	dir.items = remaining
+
+	if err := s.writeFile(data); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // CleanIfNewDay automatically cleans checked items when a new day begins.
 // On first use for a directory, it records today's date without cleaning.
 // On subsequent days, it deletes all checked items before returning.
 func (s *Store) CleanIfNewDay(directory string) error {
-	today := s.now().Format("2006-01-02")
-
-	var lastDate string
-	err := s.db.QueryRow(
-		"SELECT last_date FROM daily_clean WHERE directory = ?",
-		directory,
-	).Scan(&lastDate)
-
-	if err == sql.ErrNoRows {
-		// First use: record today, don't clean
-		_, err = s.db.Exec(
-			"INSERT INTO daily_clean (directory, last_date) VALUES (?, ?)",
-			directory, today,
-		)
-		return err
-	}
+	data, err := s.readFile()
 	if err != nil {
 		return err
 	}
 
-	if lastDate == today {
+	today := s.now().Format("2006-01-02")
+
+	dir := findDirectory(data, directory)
+	if dir == nil {
+		// No items for this directory yet, nothing to track or clean
 		return nil
 	}
 
-	// New day: clean checked items and update date atomically
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
+	if dir.lastClean == "" {
+		// First use for existing directory: seed the date, don't clean
+		dir.lastClean = today
+		return s.writeFile(data)
 	}
-	defer tx.Rollback()
 
-	if _, err := tx.Exec(
-		"DELETE FROM items WHERE directory = ? AND checked = 1",
-		directory,
-	); err != nil {
-		return err
+	if dir.lastClean == today {
+		return nil
 	}
-	if _, err := tx.Exec(
-		"UPDATE daily_clean SET last_date = ? WHERE directory = ?",
-		today, directory,
-	); err != nil {
-		return err
+
+	// New day: clean checked items and update date
+	var remaining []*fileItem
+	for _, fi := range dir.items {
+		if fi.checked && !fi.isSection {
+			continue
+		}
+		remaining = append(remaining, fi)
 	}
-	return tx.Commit()
+	dir.items = remaining
+	dir.lastClean = today
+	return s.writeFile(data)
 }
 
-// Clean deletes all checked items for the given directory. Returns the number deleted.
-func (s *Store) Clean(directory string) (int, error) {
-	result, err := s.db.Exec(
-		"DELETE FROM items WHERE directory = ? AND checked = 1",
-		directory,
-	)
+// File I/O
+
+func (s *Store) readFile() (*fileData, error) {
+	content, err := os.ReadFile(s.filePath)
+	if os.IsNotExist(err) {
+		return &fileData{}, nil
+	}
 	if err != nil {
-		return 0, err
+		return nil, err
+	}
+	return parseMarkdown(string(content)), nil
+}
+
+func (s *Store) writeFile(data *fileData) error {
+	removeEmptyDirectories(data)
+	content := renderMarkdown(data)
+
+	dir := filepath.Dir(s.filePath)
+	tmp, err := os.CreateTemp(dir, ".todo-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+
+	_, writeErr := tmp.WriteString(content)
+	closeErr := tmp.Close()
+
+	if writeErr != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("writing temp file: %w", writeErr)
+	}
+	if closeErr != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("closing temp file: %w", closeErr)
 	}
 
-	n, err := result.RowsAffected()
-	if err != nil {
-		return 0, err
+	if err := os.Rename(tmpPath, s.filePath); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("renaming temp file: %w", err)
 	}
-	return int(n), nil
+	return nil
+}
+
+// Markdown parsing and rendering
+
+func parseMarkdown(content string) *fileData {
+	data := &fileData{}
+	var current *directoryData
+
+	home, _ := os.UserHomeDir()
+
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		// Top-level heading (preserved, not parsed as data)
+		if strings.HasPrefix(trimmed, "# ") && !strings.HasPrefix(trimmed, "## ") {
+			continue
+		}
+
+		// Directory heading
+		if strings.HasPrefix(trimmed, "## ") {
+			path := strings.TrimPrefix(trimmed, "## ")
+			if path == "~" {
+				path = home
+			} else if strings.HasPrefix(path, "~/") {
+				path = filepath.Join(home, path[2:])
+			}
+			current = &directoryData{path: path}
+			data.directories = append(data.directories, current)
+			continue
+		}
+
+		if current == nil {
+			continue
+		}
+
+		// Last clean date
+		if strings.HasPrefix(trimmed, "<!-- last-clean: ") && strings.HasSuffix(trimmed, " -->") {
+			date := strings.TrimPrefix(trimmed, "<!-- last-clean: ")
+			date = strings.TrimSuffix(date, " -->")
+			current.lastClean = date
+			continue
+		}
+
+		// Section divider
+		if trimmed == "---" {
+			current.items = append(current.items, &fileItem{isSection: true})
+			continue
+		}
+
+		// Unchecked item
+		if strings.HasPrefix(trimmed, "- [ ] ") {
+			text := strings.TrimPrefix(trimmed, "- [ ] ")
+			isActive := false
+			if strings.HasSuffix(text, " @active") {
+				text = strings.TrimSuffix(text, " @active")
+				isActive = true
+			}
+			current.items = append(current.items, &fileItem{
+				text:     text,
+				isActive: isActive,
+			})
+			continue
+		}
+
+		// Checked item
+		if strings.HasPrefix(trimmed, "- [x] ") {
+			text := strings.TrimPrefix(trimmed, "- [x] ")
+			isActive := false
+			if strings.HasSuffix(text, " @active") {
+				text = strings.TrimSuffix(text, " @active")
+				isActive = true
+			}
+			current.items = append(current.items, &fileItem{
+				text:     text,
+				checked:  true,
+				isActive: isActive,
+			})
+			continue
+		}
+	}
+
+	return data
+}
+
+func renderMarkdown(data *fileData) string {
+	home, _ := os.UserHomeDir()
+
+	var b strings.Builder
+	b.WriteString("# TODO\n\n")
+
+	for i, dir := range data.directories {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+
+		// Collapse home prefix to ~
+		path := dir.path
+		if path == home {
+			path = "~"
+		} else if strings.HasPrefix(path, home+"/") {
+			path = "~/" + strings.TrimPrefix(path, home+"/")
+		}
+
+		b.WriteString("## ")
+		b.WriteString(path)
+		b.WriteString("\n\n")
+
+		if dir.lastClean != "" {
+			b.WriteString("<!-- last-clean: ")
+			b.WriteString(dir.lastClean)
+			b.WriteString(" -->\n")
+		}
+
+		for _, item := range dir.items {
+			if item.isSection {
+				b.WriteString("---\n")
+			} else {
+				check := "[ ]"
+				if item.checked {
+					check = "[x]"
+				}
+				b.WriteString("- ")
+				b.WriteString(check)
+				b.WriteString(" ")
+				b.WriteString(item.text)
+				if item.isActive {
+					b.WriteString(" @active")
+				}
+				b.WriteString("\n")
+			}
+		}
+	}
+
+	return b.String()
+}
+
+// Helpers
+
+func findDirectory(data *fileData, path string) *directoryData {
+	for _, dir := range data.directories {
+		if dir.path == path {
+			return dir
+		}
+	}
+	return nil
+}
+
+func removeEmptyDirectories(data *fileData) {
+	var kept []*directoryData
+	for _, dir := range data.directories {
+		if len(dir.items) > 0 {
+			kept = append(kept, dir)
+		}
+	}
+	data.directories = kept
+}
+
+func getOrCreateDirectory(data *fileData, path string) *directoryData {
+	if dir := findDirectory(data, path); dir != nil {
+		return dir
+	}
+	dir := &directoryData{path: path}
+	data.directories = append(data.directories, dir)
+	return dir
 }

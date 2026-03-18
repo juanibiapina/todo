@@ -7,9 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Storage backend replaced from SQLite to a plain Markdown file
+  - The file is human-readable, version-controllable, and editable with any text editor
+  - Each directory gets a `## heading` section with standard Markdown checkboxes
+  - Section dividers rendered as `---`, active items marked with `@active` suffix
+  - File starts with a `# TODO` heading
+  - Empty directory sections are automatically removed when the last item is deleted or cleaned
+  - Item IDs are now 1-based positions within each directory (shift on delete/insert)
+  - File writes are atomic (temp file + rename) to prevent corruption
+- **Breaking:** `TODO_DB` environment variable replaced by `TODO_FILE`
+- **Breaking:** Default file location on macOS changed from `~/.local/share/todo/todo.db` to `~/Library/Application Support/todo/todo.md` (correct macOS convention via `xdg.DataHome`)
+
 ### Added
 
 - TUI fuzzy filter: press `/` to search items, `ctrl+n`/`ctrl+p` to navigate matches, `enter` to select, `esc` to cancel
+- Config file support: `<XDG_CONFIG_HOME>/todo/config.toml` with a `file` key to set the Markdown file path
+- Config values support environment variable expansion (`$HOME`, `${XDG_DATA_HOME}`) and `~` for the home directory
+- Resolution order for file path: `TODO_FILE` env var, config file, platform default
+
+### Removed
+
+- SQLite dependency (`modernc.org/sqlite` and 8 transitive dependencies)
+
+### Dependencies
+
+- Added `github.com/adrg/xdg` for cross-platform XDG base directory support
+- Removed `modernc.org/sqlite`, `modernc.org/libc`, `modernc.org/mathutil`, `modernc.org/memory`, `github.com/dustin/go-humanize`, `github.com/google/uuid`, `github.com/ncruces/go-strftime`, `github.com/remyoudompheng/bigfft`
 
 ## [2.10.0] - 2026-03-14
 

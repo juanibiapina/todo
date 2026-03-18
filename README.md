@@ -2,7 +2,7 @@
 
 A simple per-directory todo list.
 
-`todo` is a CLI for managing simple todo items stored in a SQLite database. Items are scoped to the directory where you run the command, so each project gets its own list.
+`todo` is a CLI for managing simple todo items stored in a Markdown file. Items are scoped to the directory where you run the command, so each project gets its own list.
 
 ## Installation
 
@@ -107,15 +107,53 @@ Keybindings:
 
 ## Storage
 
-Items are stored in a SQLite database at `~/.local/share/todo/todo.db` (respects `XDG_DATA_HOME`).
+Items are stored in a Markdown file. The file is human-readable, version-controllable, and editable with any text editor.
 
-Override the database path with the `TODO_DB` environment variable:
+### Markdown format
 
-```bash
-TODO_DB=/path/to/my.db todo list
+```markdown
+## ~/project-a
+
+- [ ] Fix the login bug
+---
+- [ ] Deploy to staging
+
+## ~/project-b
+
+- [x] Write tests
+- [ ] Update docs @active
 ```
 
-Items are scoped by the absolute path of the current working directory.
+Each directory gets a `## heading` section. Items use standard Markdown checkboxes (`- [ ]` / `- [x]`). Section dividers are `---`. Active items are marked with `@active`.
+
+### File location
+
+Default location (platform-specific):
+- **Linux:** `~/.local/share/todo/todo.md`
+- **macOS:** `~/Library/Application Support/todo/todo.md`
+
+The default respects `XDG_DATA_HOME` when set.
+
+### Configuration
+
+Override the file path with the `TODO_FILE` environment variable:
+
+```bash
+TODO_FILE=~/todo.md todo list
+```
+
+Or create a config file at `<XDG_CONFIG_HOME>/todo/config.toml`:
+
+```toml
+file = "~/todo.md"
+```
+
+Config values support environment variable expansion (`$HOME`, `${XDG_DATA_HOME}`) and `~` for the home directory.
+
+Resolution order:
+1. `TODO_FILE` environment variable
+2. Config file `file` key
+3. Platform default
 
 ## Development
 

@@ -10,8 +10,8 @@ import (
 
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	s, err := Open(dbPath)
+	filePath := filepath.Join(t.TempDir(), "test.md")
+	s, err := Open(filePath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -41,15 +41,15 @@ func TestAdd(t *testing.T) {
 	}
 }
 
-func TestAddAutoIncrements(t *testing.T) {
+func TestAddSequentialIDs(t *testing.T) {
 	s := openTestStore(t)
 
 	i1, _ := s.Add("/d", "First")
 	i2, _ := s.Add("/d", "Second")
 	i3, _ := s.Add("/d", "Third")
 
-	if i2.ID <= i1.ID || i3.ID <= i2.ID {
-		t.Errorf("expected ascending IDs, got %d, %d, %d", i1.ID, i2.ID, i3.ID)
+	if i1.ID != 1 || i2.ID != 2 || i3.ID != 3 {
+		t.Errorf("expected IDs 1, 2, 3, got %d, %d, %d", i1.ID, i2.ID, i3.ID)
 	}
 }
 
@@ -290,7 +290,7 @@ func TestEditPreservesCheckedState(t *testing.T) {
 func TestDelete(t *testing.T) {
 	s := openTestStore(t)
 
-	i1, _ := s.Add("/d", "Keep")
+	s.Add("/d", "Keep")
 	i2, _ := s.Add("/d", "Delete me")
 
 	err := s.Delete("/d", i2.ID)
@@ -302,8 +302,8 @@ func TestDelete(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item remaining, got %d", len(items))
 	}
-	if items[0].ID != i1.ID {
-		t.Errorf("expected remaining item ID %d, got %d", i1.ID, items[0].ID)
+	if items[0].Text != "Keep" {
+		t.Errorf("expected remaining item 'Keep', got %q", items[0].Text)
 	}
 }
 
@@ -330,7 +330,7 @@ func TestDeleteWrongDirectory(t *testing.T) {
 func TestClean(t *testing.T) {
 	s := openTestStore(t)
 
-	i1, _ := s.Add("/d", "Keep this")
+	s.Add("/d", "Keep this")
 	i2, _ := s.Add("/d", "Remove this")
 	i3, _ := s.Add("/d", "Also remove")
 
@@ -349,8 +349,8 @@ func TestClean(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item remaining, got %d", len(items))
 	}
-	if items[0].ID != i1.ID {
-		t.Errorf("expected remaining item ID %d, got %d", i1.ID, items[0].ID)
+	if items[0].Text != "Keep this" {
+		t.Errorf("expected remaining item 'Keep this', got %q", items[0].Text)
 	}
 }
 
@@ -431,12 +431,13 @@ func TestSwapNotFound(t *testing.T) {
 func TestSwapWrongDirectory(t *testing.T) {
 	s := openTestStore(t)
 
-	i1, _ := s.Add("/dir-a", "A")
-	i2, _ := s.Add("/dir-b", "B")
+	s.Add("/dir-a", "A")
+	s.Add("/dir-b", "B")
 
-	err := s.Swap("/dir-a", i1.ID, i2.ID)
+	// /dir-a has only 1 item, so position 2 is out of range
+	err := s.Swap("/dir-a", 1, 2)
 	if err == nil {
-		t.Fatal("expected error for wrong directory")
+		t.Fatal("expected error for out-of-range item")
 	}
 }
 
@@ -447,10 +448,13 @@ func TestListOrderedByPositionAfterSwap(t *testing.T) {
 	s.Add("/d", "Second")
 	s.Add("/d", "Third")
 
+	// Move third to first position by swapping down twice.
+	// Reload between swaps since IDs are position-based.
 	items, _ := s.List("/d")
-	// Move third to first position by swapping twice
-	s.Swap("/d", items[2].ID, items[1].ID)
-	s.Swap("/d", items[2].ID, items[0].ID)
+	s.Swap("/d", items[2].ID, items[1].ID) // Swap positions 3 and 2
+
+	items, _ = s.List("/d")
+	s.Swap("/d", items[1].ID, items[0].ID) // Swap positions 2 and 1
 
 	items, _ = s.List("/d")
 	if items[0].Text != "Third" {
@@ -464,41 +468,18 @@ func TestListOrderedByPositionAfterSwap(t *testing.T) {
 	}
 }
 
-func TestDefaultDBPath(t *testing.T) {
-	// Test TODO_DB override
-	t.Setenv("TODO_DB", "/custom/path.db")
-	if got := DefaultDBPath(); got != "/custom/path.db" {
-		t.Errorf("expected /custom/path.db, got %q", got)
-	}
-
-	// Test XDG_DATA_HOME
-	t.Setenv("TODO_DB", "")
-	t.Setenv("XDG_DATA_HOME", "/xdg/data")
-	if got := DefaultDBPath(); got != "/xdg/data/todo/todo.db" {
-		t.Errorf("expected /xdg/data/todo/todo.db, got %q", got)
-	}
-
-	// Test default (home-based)
-	t.Setenv("XDG_DATA_HOME", "")
-	home, _ := os.UserHomeDir()
-	expected := filepath.Join(home, ".local", "share", "todo", "todo.db")
-	if got := DefaultDBPath(); got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
-
 func TestOpenCreatesDirectory(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "nested", "dir")
-	dbPath := filepath.Join(dir, "test.db")
+	filePath := filepath.Join(dir, "test.md")
 
-	s, err := Open(dbPath)
+	s, err := Open(filePath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	defer s.Close()
 
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		t.Error("expected database file to exist")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Error("expected directory to exist")
 	}
 }
 
@@ -922,11 +903,11 @@ func TestCleanIfNewDaySameDay(t *testing.T) {
 	s := openTestStore(t)
 	s.now = func() time.Time { return makeTime(2025, 3, 8) }
 
-	// First call to seed the date
-	s.CleanIfNewDay("/d")
-
 	item, _ := s.Add("/d", "Task")
 	s.Check("/d", item.ID)
+
+	// First call seeds the date
+	s.CleanIfNewDay("/d")
 
 	// Same day — should not clean
 	err := s.CleanIfNewDay("/d")
@@ -946,13 +927,13 @@ func TestCleanIfNewDayNewDay(t *testing.T) {
 	day2 := makeTime(2025, 3, 9)
 	s.now = func() time.Time { return day1 }
 
-	// Day 1: seed the date
-	s.CleanIfNewDay("/d")
-
 	// Add items and check some
-	i1, _ := s.Add("/d", "Keep this")
+	s.Add("/d", "Keep this")
 	i2, _ := s.Add("/d", "Remove this")
 	s.Check("/d", i2.ID)
+
+	// Day 1: seed the date
+	s.CleanIfNewDay("/d")
 
 	// Advance to day 2
 	s.now = func() time.Time { return day2 }
@@ -967,8 +948,8 @@ func TestCleanIfNewDayNewDay(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item after new-day clean, got %d", len(items))
 	}
-	if items[0].ID != i1.ID {
-		t.Errorf("expected remaining item ID %d, got %d", i1.ID, items[0].ID)
+	if items[0].Text != "Keep this" {
+		t.Errorf("expected remaining item 'Keep this', got %q", items[0].Text)
 	}
 }
 
@@ -978,15 +959,15 @@ func TestCleanIfNewDayDirectoryIsolation(t *testing.T) {
 	day2 := makeTime(2025, 3, 9)
 	s.now = func() time.Time { return day1 }
 
-	// Seed both directories on day 1
-	s.CleanIfNewDay("/dir-a")
-	s.CleanIfNewDay("/dir-b")
-
 	// Add checked items in both
 	ia, _ := s.Add("/dir-a", "A checked")
 	s.Check("/dir-a", ia.ID)
 	ib, _ := s.Add("/dir-b", "B checked")
 	s.Check("/dir-b", ib.ID)
+
+	// Seed both directories on day 1
+	s.CleanIfNewDay("/dir-a")
+	s.CleanIfNewDay("/dir-b")
 
 	// Advance to day 2, clean only dir-a
 	s.now = func() time.Time { return day2 }
@@ -1011,11 +992,12 @@ func TestCleanIfNewDayUpdatesDate(t *testing.T) {
 	day2 := makeTime(2025, 3, 9)
 	s.now = func() time.Time { return day1 }
 
-	s.CleanIfNewDay("/d")
-
 	// Add and check an item on day 1
 	i1, _ := s.Add("/d", "Day 1 task")
 	s.Check("/d", i1.ID)
+
+	// Seed the date on day 1
+	s.CleanIfNewDay("/d")
 
 	// Day 2: clean happens
 	s.now = func() time.Time { return day2 }
@@ -1032,7 +1014,81 @@ func TestCleanIfNewDayUpdatesDate(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item (same day should not re-clean), got %d", len(items))
 	}
-	if items[0].ID != i2.ID {
-		t.Errorf("expected remaining item ID %d, got %d", i2.ID, items[0].ID)
+	if items[0].Text != "Day 2 task" {
+		t.Errorf("expected remaining item 'Day 2 task', got %q", items[0].Text)
+	}
+}
+
+func TestDeleteLastItemRemovesSection(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Only item")
+	s.Delete("/d", item.ID)
+
+	// Directory should be gone from the file
+	content, _ := os.ReadFile(s.filePath)
+	if strings.Contains(string(content), "## /d") {
+		t.Error("expected directory section to be removed from file")
+	}
+
+	// List should return empty
+	items, _ := s.List("/d")
+	if len(items) != 0 {
+		t.Errorf("expected 0 items, got %d", len(items))
+	}
+}
+
+func TestCleanRemovesEmptySection(t *testing.T) {
+	s := openTestStore(t)
+
+	i1, _ := s.Add("/d", "Task 1")
+	i2, _ := s.Add("/d", "Task 2")
+	s.Check("/d", i1.ID)
+	s.Check("/d", i2.ID)
+
+	s.Clean("/d")
+
+	// Directory should be gone from the file
+	content, _ := os.ReadFile(s.filePath)
+	if strings.Contains(string(content), "## /d") {
+		t.Error("expected directory section to be removed from file")
+	}
+}
+
+func TestCleanIfNewDayNoItemsNoSection(t *testing.T) {
+	s := openTestStore(t)
+	s.now = func() time.Time { return makeTime(2025, 3, 8) }
+
+	// CleanIfNewDay on a directory with no items should not create a section
+	err := s.CleanIfNewDay("/d")
+	if err != nil {
+		t.Fatalf("CleanIfNewDay: %v", err)
+	}
+
+	// File should not exist (no writes happened)
+	if _, err := os.Stat(s.filePath); !os.IsNotExist(err) {
+		t.Error("expected no file to be created")
+	}
+}
+
+func TestCleanIfNewDayRemovesEmptySection(t *testing.T) {
+	s := openTestStore(t)
+	day1 := makeTime(2025, 3, 8)
+	day2 := makeTime(2025, 3, 9)
+	s.now = func() time.Time { return day1 }
+
+	// Add a checked item and seed the date
+	item, _ := s.Add("/d", "Remove me")
+	s.Check("/d", item.ID)
+	s.CleanIfNewDay("/d")
+
+	// Day 2: clean removes the only item
+	s.now = func() time.Time { return day2 }
+	s.CleanIfNewDay("/d")
+
+	// Directory should be gone from the file
+	content, _ := os.ReadFile(s.filePath)
+	if strings.Contains(string(content), "## /d") {
+		t.Error("expected directory section to be removed from file")
 	}
 }

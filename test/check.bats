@@ -66,7 +66,8 @@ load test_helper
   local id
   id="$(extract_id "${out}")"
 
-  sqlite3 "${TODO_DB}" "UPDATE items SET is_active = 1 WHERE id = ${id}"
+  # Make item active by editing the Markdown file directly
+  sed -i.bak 's/^- \[ \] Active task$/- [ ] Active task @active/' "${TODO_FILE}" && rm -f "${TODO_FILE}.bak"
 
   # Verify it's active
   run todo list

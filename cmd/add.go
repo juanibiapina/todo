@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/juanibiapina/todo/internal/config"
 	"github.com/juanibiapina/todo/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,7 @@ var addCmd = &cobra.Command{
 			return err
 		}
 
-		s, err := store.Open(store.DefaultDBPath())
+		s, err := store.Open(config.DefaultFilePath())
 		if err != nil {
 			return err
 		}
