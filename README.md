@@ -128,32 +128,15 @@ Each directory gets a `## heading` section. Items use standard Markdown checkbox
 
 ### File location
 
-Default location (platform-specific):
-- **Linux:** `~/.local/share/todo/todo.md`
-- **macOS:** `~/Library/Application Support/todo/todo.md`
+Default: `~/.local/share/todo/todo.md`
 
-The default respects `XDG_DATA_HOME` when set.
-
-### Configuration
-
-Override the file path with the `TODO_FILE` environment variable:
+Override with the `TODO_FILE` environment variable:
 
 ```bash
-TODO_FILE=~/todo.md todo list
+export TODO_FILE=~/todo.md
 ```
 
-Or create a config file at `<XDG_CONFIG_HOME>/todo/config.toml`:
-
-```toml
-file = "~/todo.md"
-```
-
-Config values support environment variable expansion (`$HOME`, `${XDG_DATA_HOME}`) and `~` for the home directory.
-
-Resolution order:
-1. `TODO_FILE` environment variable
-2. Config file `file` key
-3. Platform default
+The value supports environment variable expansion (`$HOME`, `$MY_VAR`) and `~` for the home directory.
 
 ## Development
 
