@@ -110,8 +110,8 @@ func (m Model) itemLineCount(i int) int {
 		}
 	}
 
-	// Active divider adds a line before this item.
-	if i == m.activeDividerIndex() {
+	// Active divider adds a line before this item (skip if item is already a section divider).
+	if divIdx := m.activeDividerIndex(); i == divIdx && !m.items[divIdx].IsSection {
 		lines++
 	}
 
@@ -531,7 +531,8 @@ func (m Model) View() string {
 
 	for i, item := range m.items {
 		// Insert a visual divider between active and non-active items.
-		if i == dividerIdx {
+		// Skip if the item is already a section divider (avoids double rules).
+		if i == dividerIdx && !item.IsSection {
 			indent := "  "
 			rule := "──────────"
 			if m.width > 0 {
