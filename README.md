@@ -135,7 +135,7 @@ Items are stored in a Markdown file. The file is human-readable, version-control
 - [ ] Update docs @active
 ```
 
-Each directory gets a `## heading` section. Items use standard Markdown checkboxes (`- [ ]` / `- [x]`). Indented items use nested list syntax (2 spaces per level, up to 3 levels). Section dividers are `---`. Active items are marked with `@active`.
+Each directory gets a `## heading` section. Items use standard Markdown checkboxes (`- [ ]` / `- [x]`). Indented items use nested list syntax (2 spaces per level, up to 5 levels). Section dividers are `---`. Active items are marked with `@active`.
 
 ### File location
 

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - TUI add-item keybinding also available as `o` (Vim-style), `a` still works
 - TUI `a` always adds at root level (no indent), `o` inherits indent from cursor item
+- Increased max indent level from 3 to 5
 
 ## [3.1.0] - 2026-03-29
 

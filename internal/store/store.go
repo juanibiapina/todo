@@ -82,7 +82,7 @@ func (s *Store) Add(directory, text string) (*Item, error) {
 	}, nil
 }
 
-// Indent increments the indent level of an item by one (max 3).
+// Indent increments the indent level of an item by one (max 5).
 // Returns an error if the item is a section or doesn't exist.
 func (s *Store) Indent(directory string, id int) error {
 	return s.setIndentLevel(directory, id, 1)
@@ -114,8 +114,8 @@ func (s *Store) setIndentLevel(directory string, id int, delta int) error {
 	if newLevel < 0 {
 		newLevel = 0
 	}
-	if newLevel > 3 {
-		newLevel = 3
+	if newLevel > 5 {
+		newLevel = 5
 	}
 	fi.indentLevel = newLevel
 

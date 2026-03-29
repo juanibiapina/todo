@@ -495,7 +495,7 @@ func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "tab":
-		if m.mode == modeAdd && m.addIndent < 3 {
+		if m.mode == modeAdd && m.addIndent < 5 {
 			m.addIndent++
 			m.input.Width = max(0, m.width-6-m.addIndent*2)
 		}

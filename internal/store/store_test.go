@@ -1195,13 +1195,13 @@ func TestIndentMaxLevel(t *testing.T) {
 
 	item, _ := s.Add("/d", "Task")
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 7; i++ {
 		s.Indent("/d", item.ID)
 	}
 
 	got, _ := s.Get("/d", item.ID)
-	if got.IndentLevel != 3 {
-		t.Errorf("expected indent level capped at 3, got %d", got.IndentLevel)
+	if got.IndentLevel != 5 {
+		t.Errorf("expected indent level capped at 5, got %d", got.IndentLevel)
 	}
 }
 
