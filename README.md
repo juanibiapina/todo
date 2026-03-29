@@ -100,8 +100,9 @@ Keybindings:
 - `x`: toggle active (active items float to top)
 - `tab`: indent selected item
 - `shift+tab`: unindent selected item
-- `a`/`o`: add new item (after cursor)
-- `O` (Shift): add new item (before cursor)
+- `a`: add new item (after cursor, no indent)
+- `o`: add new item (after cursor, matches indent level)
+- `O` (Shift): add new item (before cursor, inherits indent)
 - `s`: add section divider (after cursor)
 - `e`: edit selected item
 - `d`: delete selected item

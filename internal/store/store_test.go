@@ -589,7 +589,7 @@ func TestInsertItemAfter(t *testing.T) {
 	second, _ := s.Add("/d", "Second")
 	s.Add("/d", "Third")
 
-	inserted, err := s.InsertItemAfter("/d", "Between", second.ID)
+	inserted, err := s.InsertItemAfter("/d", "Between", second.ID, 0)
 	if err != nil {
 		t.Fatalf("InsertItemAfter: %v", err)
 	}
@@ -623,7 +623,7 @@ func TestInsertItemBefore(t *testing.T) {
 	second, _ := s.Add("/d", "Second")
 	s.Add("/d", "Third")
 
-	inserted, err := s.InsertItemBefore("/d", "Between", second.ID)
+	inserted, err := s.InsertItemBefore("/d", "Between", second.ID, 0)
 	if err != nil {
 		t.Fatalf("InsertItemBefore: %v", err)
 	}
@@ -653,7 +653,7 @@ func TestInsertItemBeforeFirst(t *testing.T) {
 	s.Add("/d", "First")
 	s.Add("/d", "Second")
 
-	inserted, err := s.InsertItemBefore("/d", "New first", 1)
+	inserted, err := s.InsertItemBefore("/d", "New first", 1, 0)
 	if err != nil {
 		t.Fatalf("InsertItemBefore: %v", err)
 	}
@@ -670,6 +670,52 @@ func TestInsertItemBeforeFirst(t *testing.T) {
 		if items[i].Text != exp {
 			t.Errorf("position %d: expected %q, got %q", i, exp, items[i].Text)
 		}
+	}
+}
+
+func TestInsertItemAfterWithIndent(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	second, _ := s.Add("/d", "Second")
+
+	inserted, err := s.InsertItemAfter("/d", "Indented", second.ID, 2)
+	if err != nil {
+		t.Fatalf("InsertItemAfter: %v", err)
+	}
+	if inserted.IndentLevel != 2 {
+		t.Errorf("expected indent level 2, got %d", inserted.IndentLevel)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	if items[2].IndentLevel != 2 {
+		t.Errorf("expected inserted item indent level 2, got %d", items[2].IndentLevel)
+	}
+}
+
+func TestInsertItemBeforeWithIndent(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	second, _ := s.Add("/d", "Second")
+
+	inserted, err := s.InsertItemBefore("/d", "Indented", second.ID, 1)
+	if err != nil {
+		t.Fatalf("InsertItemBefore: %v", err)
+	}
+	if inserted.IndentLevel != 1 {
+		t.Errorf("expected indent level 1, got %d", inserted.IndentLevel)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	if items[1].IndentLevel != 1 {
+		t.Errorf("expected inserted item indent level 1, got %d", items[1].IndentLevel)
 	}
 }
 

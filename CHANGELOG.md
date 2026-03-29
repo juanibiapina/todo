@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - TUI `O` (Shift) to add a new item before the cursor
+- TUI `o` inherits indent from cursor context (matches children if present); `O` inherits indent from current item
 
 ### Changed
 
 - TUI add-item keybinding also available as `o` (Vim-style), `a` still works
+- TUI `a` always adds at root level (no indent), `o` inherits indent from cursor item
 
 ## [3.1.0] - 2026-03-29
 

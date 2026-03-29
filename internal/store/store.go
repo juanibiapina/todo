@@ -145,21 +145,21 @@ func (s *Store) AddSection(directory string) (*Item, error) {
 }
 
 // InsertItemAfter inserts a new item right after the given position.
-func (s *Store) InsertItemAfter(directory, text string, afterID int) (*Item, error) {
-	return s.insertAfter(directory, text, afterID, false)
+func (s *Store) InsertItemAfter(directory, text string, afterID int, indentLevel int) (*Item, error) {
+	return s.insertAfter(directory, text, afterID, false, indentLevel)
 }
 
 // InsertItemBefore inserts a new item right before the given position.
-func (s *Store) InsertItemBefore(directory, text string, beforeID int) (*Item, error) {
-	return s.insertBefore(directory, text, beforeID)
+func (s *Store) InsertItemBefore(directory, text string, beforeID int, indentLevel int) (*Item, error) {
+	return s.insertBefore(directory, text, beforeID, indentLevel)
 }
 
 // InsertSectionAfter inserts a new section divider right after the given position.
 func (s *Store) InsertSectionAfter(directory string, afterID int) (*Item, error) {
-	return s.insertAfter(directory, "", afterID, true)
+	return s.insertAfter(directory, "", afterID, true, 0)
 }
 
-func (s *Store) insertAfter(directory, text string, afterID int, isSection bool) (*Item, error) {
+func (s *Store) insertAfter(directory, text string, afterID int, isSection bool, indentLevel int) (*Item, error) {
 	data, err := s.readFile()
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ func (s *Store) insertAfter(directory, text string, afterID int, isSection bool)
 		return nil, fmt.Errorf("item %d not found", afterID)
 	}
 
-	newItem := &fileItem{text: text, isSection: isSection}
+	newItem := &fileItem{text: text, isSection: isSection, indentLevel: indentLevel}
 
 	// Insert after afterID position (afterID is 1-based)
 	items := make([]*fileItem, 0, len(dir.items)+1)
@@ -189,10 +189,11 @@ func (s *Store) insertAfter(directory, text string, afterID int, isSection bool)
 		Directory:   directory,
 		Text:        text,
 		IsSection:   isSection,
+		IndentLevel: indentLevel,
 	}, nil
 }
 
-func (s *Store) insertBefore(directory, text string, beforeID int) (*Item, error) {
+func (s *Store) insertBefore(directory, text string, beforeID int, indentLevel int) (*Item, error) {
 	data, err := s.readFile()
 	if err != nil {
 		return nil, err
@@ -203,7 +204,7 @@ func (s *Store) insertBefore(directory, text string, beforeID int) (*Item, error
 		return nil, fmt.Errorf("item %d not found", beforeID)
 	}
 
-	newItem := &fileItem{text: text}
+	newItem := &fileItem{text: text, indentLevel: indentLevel}
 
 	// Insert before beforeID position (beforeID is 1-based)
 	items := make([]*fileItem, 0, len(dir.items)+1)
@@ -217,9 +218,10 @@ func (s *Store) insertBefore(directory, text string, beforeID int) (*Item, error
 	}
 
 	return &Item{
-		ID:        beforeID,
-		Directory: directory,
-		Text:      text,
+		ID:          beforeID,
+		Directory:   directory,
+		Text:        text,
+		IndentLevel: indentLevel,
 	}, nil
 }
 

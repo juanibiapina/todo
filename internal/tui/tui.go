@@ -43,6 +43,7 @@ type Model struct {
 	scrollOffset int
 	err          error
 	addBefore    bool // when in modeAdd, insert before cursor instead of after
+	addIndent    int  // indent level for the new item in modeAdd
 
 	// Filter mode state
 	filterInput       textinput.Model
@@ -273,19 +274,42 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 		}
 
-	case "a", "o":
+	case "a":
 		m.mode = modeAdd
 		m.addBefore = false
+		m.addIndent = 0
 		m.input.Reset()
 		m.input.Placeholder = "New item..."
+		m.input.Width = max(0, m.width-6)
+		m.input.Focus()
+		return m, m.input.Cursor.BlinkCmd()
+
+	case "o":
+		m.mode = modeAdd
+		m.addBefore = false
+		m.addIndent = 0
+		if len(m.items) > 0 {
+			m.addIndent = m.items[m.cursor].IndentLevel
+			if m.cursor+1 < len(m.items) {
+				m.addIndent = max(m.addIndent, m.items[m.cursor+1].IndentLevel)
+			}
+		}
+		m.input.Reset()
+		m.input.Placeholder = "New item..."
+		m.input.Width = max(0, m.width-6-m.addIndent*2)
 		m.input.Focus()
 		return m, m.input.Cursor.BlinkCmd()
 
 	case "O":
 		m.mode = modeAdd
 		m.addBefore = true
+		m.addIndent = 0
+		if len(m.items) > 0 {
+			m.addIndent = m.items[m.cursor].IndentLevel
+		}
 		m.input.Reset()
 		m.input.Placeholder = "New item..."
+		m.input.Width = max(0, m.width-6-m.addIndent*2)
 		m.input.Focus()
 		return m, m.input.Cursor.BlinkCmd()
 
@@ -451,9 +475,9 @@ func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			if text != "" {
 				if len(m.items) > 0 {
 					if m.addBefore {
-						m.store.InsertItemBefore(m.directory, text, m.items[m.cursor].ID)
+						m.store.InsertItemBefore(m.directory, text, m.items[m.cursor].ID, m.addIndent)
 					} else {
-						m.store.InsertItemAfter(m.directory, text, m.items[m.cursor].ID)
+						m.store.InsertItemAfter(m.directory, text, m.items[m.cursor].ID, m.addIndent)
 						m.cursor++
 					}
 				} else {
@@ -555,7 +579,8 @@ func (m Model) View() string {
 
 	if len(m.items) == 0 {
 		if m.mode == modeAdd {
-			itemLines = append(itemLines, cursorStyle.Render("> ")+"[ ] "+m.input.View())
+			addIndent := strings.Repeat("  ", m.addIndent)
+			itemLines = append(itemLines, cursorStyle.Render("> ")+addIndent+"[ ] "+m.input.View())
 		} else {
 			itemLines = append(itemLines, "  No items. Press 'o' to add one.")
 		}
@@ -578,7 +603,8 @@ func (m Model) View() string {
 
 		// Add-before: show input line before the cursor item
 		if m.mode == modeAdd && m.addBefore && i == m.cursor {
-			itemLines = append(itemLines, cursorStyle.Render("> ")+"[ ] "+m.input.View())
+			addIndent := strings.Repeat("  ", m.addIndent)
+			itemLines = append(itemLines, cursorStyle.Render("> ")+addIndent+"[ ] "+m.input.View())
 		}
 
 		cursor := "  "
@@ -636,7 +662,8 @@ func (m Model) View() string {
 
 		// Add-after: show input line after the cursor item
 		if m.mode == modeAdd && !m.addBefore && i == m.cursor {
-			itemLines = append(itemLines, cursorStyle.Render("> ")+"[ ] "+m.input.View())
+			addIndent := strings.Repeat("  ", m.addIndent)
+			itemLines = append(itemLines, cursorStyle.Render("> ")+addIndent+"[ ] "+m.input.View())
 		}
 	}
 
