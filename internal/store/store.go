@@ -11,12 +11,13 @@ import (
 
 // Item represents a single todo item or section divider.
 type Item struct {
-	ID        int
-	Directory string
-	Text      string
-	Checked   bool
-	IsSection bool
-	IsActive  bool
+	ID          int
+	Directory   string
+	Text        string
+	Checked     bool
+	IsSection   bool
+	IsActive    bool
+	IndentLevel int
 }
 
 // Store provides access to the todo file.
@@ -38,10 +39,11 @@ type directoryData struct {
 }
 
 type fileItem struct {
-	text      string
-	checked   bool
-	isSection bool
-	isActive  bool
+	text        string
+	checked     bool
+	isSection   bool
+	isActive    bool
+	indentLevel int
 }
 
 // Open creates a Store backed by the given Markdown file path.
@@ -78,6 +80,46 @@ func (s *Store) Add(directory, text string) (*Item, error) {
 		Directory: directory,
 		Text:      text,
 	}, nil
+}
+
+// Indent increments the indent level of an item by one (max 3).
+// Returns an error if the item is a section or doesn't exist.
+func (s *Store) Indent(directory string, id int) error {
+	return s.setIndentLevel(directory, id, 1)
+}
+
+// Unindent decrements the indent level of an item by one (min 0).
+// Returns an error if the item is a section or doesn't exist.
+func (s *Store) Unindent(directory string, id int) error {
+	return s.setIndentLevel(directory, id, -1)
+}
+
+func (s *Store) setIndentLevel(directory string, id int, delta int) error {
+	data, err := s.readFile()
+	if err != nil {
+		return err
+	}
+
+	dir := findDirectory(data, directory)
+	if dir == nil || id < 1 || id > len(dir.items) {
+		return fmt.Errorf("item %d not found", id)
+	}
+
+	fi := dir.items[id-1]
+	if fi.isSection {
+		return fmt.Errorf("item %d is a section", id)
+	}
+
+	newLevel := fi.indentLevel + delta
+	if newLevel < 0 {
+		newLevel = 0
+	}
+	if newLevel > 3 {
+		newLevel = 3
+	}
+	fi.indentLevel = newLevel
+
+	return s.writeFile(data)
 }
 
 // AddSection inserts a new section divider for the given directory.
@@ -138,10 +180,10 @@ func (s *Store) insertAfter(directory, text string, afterID int, isSection bool)
 
 	newID := afterID + 1
 	return &Item{
-		ID:        newID,
-		Directory: directory,
-		Text:      text,
-		IsSection: isSection,
+		ID:          newID,
+		Directory:   directory,
+		Text:        text,
+		IsSection:   isSection,
 	}, nil
 }
 
@@ -161,12 +203,13 @@ func (s *Store) List(directory string) ([]*Item, error) {
 	items := make([]*Item, len(dir.items))
 	for i, fi := range dir.items {
 		items[i] = &Item{
-			ID:        i + 1,
-			Directory: directory,
-			Text:      fi.text,
-			Checked:   fi.checked,
-			IsSection: fi.isSection,
-			IsActive:  fi.isActive,
+			ID:          i + 1,
+			Directory:   directory,
+			Text:        fi.text,
+			Checked:     fi.checked,
+			IsSection:   fi.isSection,
+			IsActive:    fi.isActive,
+			IndentLevel: fi.indentLevel,
 		}
 	}
 
@@ -194,12 +237,13 @@ func (s *Store) Get(directory string, id int) (*Item, error) {
 
 	fi := dir.items[id-1]
 	return &Item{
-		ID:        id,
-		Directory: directory,
-		Text:      fi.text,
-		Checked:   fi.checked,
-		IsSection: fi.isSection,
-		IsActive:  fi.isActive,
+		ID:          id,
+		Directory:   directory,
+		Text:        fi.text,
+		Checked:     fi.checked,
+		IsSection:   fi.isSection,
+		IsActive:    fi.isActive,
+		IndentLevel: fi.indentLevel,
 	}, nil
 }
 
@@ -515,6 +559,7 @@ func parseMarkdown(content string) *fileData {
 
 		// Unchecked item
 		if strings.HasPrefix(trimmed, "- [ ] ") {
+			indentLevel := countLeadingSpaces(line) / 2
 			text := strings.TrimPrefix(trimmed, "- [ ] ")
 			isActive := false
 			if strings.HasSuffix(text, " @active") {
@@ -522,14 +567,16 @@ func parseMarkdown(content string) *fileData {
 				isActive = true
 			}
 			current.items = append(current.items, &fileItem{
-				text:     text,
-				isActive: isActive,
+				text:        text,
+				isActive:    isActive,
+				indentLevel: indentLevel,
 			})
 			continue
 		}
 
 		// Checked item
 		if strings.HasPrefix(trimmed, "- [x] ") {
+			indentLevel := countLeadingSpaces(line) / 2
 			text := strings.TrimPrefix(trimmed, "- [x] ")
 			isActive := false
 			if strings.HasSuffix(text, " @active") {
@@ -537,9 +584,10 @@ func parseMarkdown(content string) *fileData {
 				isActive = true
 			}
 			current.items = append(current.items, &fileItem{
-				text:     text,
-				checked:  true,
-				isActive: isActive,
+				text:        text,
+				checked:     true,
+				isActive:    isActive,
+				indentLevel: indentLevel,
 			})
 			continue
 		}
@@ -585,6 +633,7 @@ func renderMarkdown(data *fileData) string {
 				if item.checked {
 					check = "[x]"
 				}
+				b.WriteString(strings.Repeat("  ", item.indentLevel))
 				b.WriteString("- ")
 				b.WriteString(check)
 				b.WriteString(" ")
@@ -628,4 +677,13 @@ func getOrCreateDirectory(data *fileData, path string) *directoryData {
 	dir := &directoryData{path: path}
 	data.directories = append(data.directories, dir)
 	return dir
+}
+
+func countLeadingSpaces(s string) int {
+	for i, ch := range s {
+		if ch != ' ' {
+			return i
+		}
+	}
+	return len(s)
 }

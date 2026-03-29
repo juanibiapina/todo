@@ -62,11 +62,11 @@ Output:
 ```
 3 [ ] Call dentist  (active)
 1 [ ] Buy groceries
-2 [ ] Fix the login bug
+2   [ ] Pick up milk
 ──────────
 ```
 
-Active items appear at the top of the list. In the TUI, press `x` to toggle an item as active. Checking an item as done automatically clears its active status.
+Active items appear at the top of the list. Indented items show extra spacing before the checkbox. In the TUI, press `x` to toggle an item as active. Checking an item as done automatically clears its active status.
 
 ### Edit an item
 
@@ -98,6 +98,8 @@ Keybindings:
 - `J`/`K` (Shift): reorder items
 - `space`/`enter`: toggle checked
 - `x`: toggle active (active items float to top)
+- `tab`: indent selected item
+- `shift+tab`: unindent selected item
 - `a`: add new item (after cursor)
 - `s`: add section divider (after cursor)
 - `e`: edit selected item
@@ -117,6 +119,8 @@ Items are stored in a Markdown file. The file is human-readable, version-control
 ## ~/project-a
 
 - [ ] Fix the login bug
+  - [ ] Reproduce locally
+    - [ ] Check server logs
 ---
 - [ ] Deploy to staging
 
@@ -126,7 +130,7 @@ Items are stored in a Markdown file. The file is human-readable, version-control
 - [ ] Update docs @active
 ```
 
-Each directory gets a `## heading` section. Items use standard Markdown checkboxes (`- [ ]` / `- [x]`). Section dividers are `---`. Active items are marked with `@active`.
+Each directory gets a `## heading` section. Items use standard Markdown checkboxes (`- [ ]` / `- [x]`). Indented items use nested list syntax (2 spaces per level, up to 3 levels). Section dividers are `---`. Active items are marked with `@active`.
 
 ### File location
 

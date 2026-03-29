@@ -102,7 +102,7 @@ func (m Model) itemLineCount(i int) int {
 		// Editing replaces the item with a single-line input.
 	} else if m.width > 0 {
 		// Calculate wrapped line count.
-		prefixWidth := 6 // "  " (cursor) + "[ ] " (check + space)
+		prefixWidth := 6 + item.IndentLevel*2 // "  " (cursor) + indent + "[ ] " (check + space)
 		if prefixWidth < m.width {
 			availableWidth := m.width - prefixWidth
 			wrapped := lipgloss.NewStyle().Width(availableWidth).Render(item.Text)
@@ -293,6 +293,7 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.mode = modeEdit
 			m.input.Reset()
 			m.input.Placeholder = "Edit item..."
+			m.input.Width = max(0, m.width-6-m.items[m.cursor].IndentLevel*2)
 			m.input.SetValue(m.items[m.cursor].Text)
 			m.input.CursorEnd()
 			m.input.Focus()
@@ -323,6 +324,24 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "C":
 		m.store.Clean(m.directory)
 		return m, m.loadItems
+
+	case "tab":
+		if len(m.items) > 0 {
+			item := m.items[m.cursor]
+			if !item.IsSection {
+				m.store.Indent(m.directory, item.ID)
+				return m, m.loadItems
+			}
+		}
+
+	case "shift+tab":
+		if len(m.items) > 0 {
+			item := m.items[m.cursor]
+			if !item.IsSection {
+				m.store.Unindent(m.directory, item.ID)
+				return m, m.loadItems
+			}
+		}
 
 	case "/":
 		m.mode = modeFilter
@@ -495,8 +514,9 @@ func (m Model) viewFilter() string {
 				textStyle = activeStyle
 			}
 
+			indent := strings.Repeat("  ", item.IndentLevel)
 			text := textStyle.Render(item.Text)
-			b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, check, text))
+			b.WriteString(fmt.Sprintf("%s%s%s %s\n", cursor, indent, check, text))
 		}
 	}
 
@@ -559,7 +579,8 @@ func (m Model) View() string {
 			if item.Checked {
 				check = "[x]"
 			}
-			itemLines = append(itemLines, cursorStyle.Render("> ")+check+" "+m.input.View())
+			indent := strings.Repeat("  ", item.IndentLevel)
+			itemLines = append(itemLines, cursorStyle.Render("> ")+indent+check+" "+m.input.View())
 		} else {
 			check := "[ ]"
 			textStyle := uncheckedStyle
@@ -571,7 +592,8 @@ func (m Model) View() string {
 				textStyle = activeStyle
 			}
 
-			prefix := fmt.Sprintf("%s%s ", cursor, check)
+			indent := strings.Repeat("  ", item.IndentLevel)
+			prefix := fmt.Sprintf("%s%s%s ", cursor, indent, check)
 			prefixWidth := lipgloss.Width(prefix)
 
 			if m.width > 0 && prefixWidth < m.width {
@@ -622,7 +644,7 @@ func (m Model) View() string {
 	if m.mode == modeAdd || m.mode == modeEdit {
 		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
 	} else {
-		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • x: active • a: add • s: section • e: edit • d: delete • c: copy • C: clean • /: filter • esc/q: quit"))
+		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • x: active • tab/S-tab: indent • a: add • s: section • e: edit • d: delete • c: copy • C: clean • /: filter • esc/q: quit"))
 	}
 	b.WriteString("\n")
 

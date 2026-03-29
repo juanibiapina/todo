@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/juanibiapina/todo/internal/config"
 	"github.com/juanibiapina/todo/internal/store"
@@ -48,7 +49,8 @@ var listCmd = &cobra.Command{
 			if item.IsActive {
 				active = "  (active)"
 			}
-			fmt.Printf("%d [%s] %s%s\n", item.ID, check, item.Text, active)
+			indent := strings.Repeat("  ", item.IndentLevel)
+			fmt.Printf("%d %s[%s] %s%s\n", item.ID, indent, check, item.Text, active)
 		}
 
 		return nil

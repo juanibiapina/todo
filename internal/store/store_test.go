@@ -1071,6 +1071,143 @@ func TestCleanIfNewDayNoItemsNoSection(t *testing.T) {
 	}
 }
 
+func TestIndent(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+
+	err := s.Indent("/d", item.ID)
+	if err != nil {
+		t.Fatalf("Indent: %v", err)
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.IndentLevel != 1 {
+		t.Errorf("expected indent level 1, got %d", got.IndentLevel)
+	}
+}
+
+func TestIndentMaxLevel(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+
+	for i := 0; i < 5; i++ {
+		s.Indent("/d", item.ID)
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.IndentLevel != 3 {
+		t.Errorf("expected indent level capped at 3, got %d", got.IndentLevel)
+	}
+}
+
+func TestIndentRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	err := s.Indent("/d", section.ID)
+	if err == nil {
+		t.Fatal("expected error when indenting a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestIndentNotFound(t *testing.T) {
+	s := openTestStore(t)
+
+	err := s.Indent("/d", 999)
+	if err == nil {
+		t.Fatal("expected error for non-existent item")
+	}
+}
+
+func TestUnindent(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+	s.Indent("/d", item.ID)
+	s.Indent("/d", item.ID)
+
+	err := s.Unindent("/d", item.ID)
+	if err != nil {
+		t.Fatalf("Unindent: %v", err)
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.IndentLevel != 1 {
+		t.Errorf("expected indent level 1, got %d", got.IndentLevel)
+	}
+}
+
+func TestUnindentAtZero(t *testing.T) {
+	s := openTestStore(t)
+
+	item, _ := s.Add("/d", "Task")
+
+	err := s.Unindent("/d", item.ID)
+	if err != nil {
+		t.Fatalf("Unindent: %v", err)
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.IndentLevel != 0 {
+		t.Errorf("expected indent level 0, got %d", got.IndentLevel)
+	}
+}
+
+func TestUnindentRejectsSection(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d")
+	err := s.Unindent("/d", section.ID)
+	if err == nil {
+		t.Fatal("expected error when unindenting a section")
+	}
+	if !strings.Contains(err.Error(), "is a section") {
+		t.Errorf("expected 'is a section' error, got: %v", err)
+	}
+}
+
+func TestIndentPersistsInMarkdown(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "Level 0")
+	item2, _ := s.Add("/d", "Level 1")
+	item3, _ := s.Add("/d", "Level 2")
+
+	s.Indent("/d", item2.ID)
+	s.Indent("/d", item3.ID)
+	s.Indent("/d", item3.ID)
+
+	// Verify markdown content has indentation
+	content, _ := os.ReadFile(s.filePath)
+	md := string(content)
+	if !strings.Contains(md, "- [ ] Level 0") {
+		t.Error("expected level 0 item with no indent")
+	}
+	if !strings.Contains(md, "  - [ ] Level 1") {
+		t.Error("expected level 1 item with 2-space indent")
+	}
+	if !strings.Contains(md, "    - [ ] Level 2") {
+		t.Error("expected level 2 item with 4-space indent")
+	}
+
+	// Re-read and verify indent levels survive round-trip
+	items, _ := s.List("/d")
+	if items[0].IndentLevel != 0 {
+		t.Errorf("expected item 1 indent 0, got %d", items[0].IndentLevel)
+	}
+	if items[1].IndentLevel != 1 {
+		t.Errorf("expected item 2 indent 1, got %d", items[1].IndentLevel)
+	}
+	if items[2].IndentLevel != 2 {
+		t.Errorf("expected item 3 indent 2, got %d", items[2].IndentLevel)
+	}
+}
+
 func TestCleanIfNewDayRemovesEmptySection(t *testing.T) {
 	s := openTestStore(t)
 	day1 := makeTime(2025, 3, 8)

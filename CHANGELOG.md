@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Indent/unindent support for todo items (up to 3 levels)
+- TUI `tab` to indent and `shift+tab` to unindent the selected item
+- Indentation displayed in both TUI and `todo list` CLI output
+- Indentation persisted as nested Markdown lists (2 spaces per level)
+
 ### Fixed
 
 - TUI no longer renders a duplicate divider when the first non-active item is a section divider

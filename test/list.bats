@@ -68,6 +68,22 @@ load test_helper
   assert_output --partial "Hello world"
 }
 
+@test "list: shows indented items" {
+  todo add Level 0 item
+  todo add Level 1 item
+  todo add Level 2 item
+
+  # Indent items by editing the markdown file directly
+  sed -i.bak 's/^- \[ \] Level 1 item$/  - [ ] Level 1 item/' "${TODO_FILE}" && rm -f "${TODO_FILE}.bak"
+  sed -i.bak 's/^- \[ \] Level 2 item$/    - [ ] Level 2 item/' "${TODO_FILE}" && rm -f "${TODO_FILE}.bak"
+
+  run todo list
+  assert_success
+  assert_output --partial "1 [ ] Level 0 item"
+  assert_output --partial "2   [ ] Level 1 item"
+  assert_output --partial "3     [ ] Level 2 item"
+}
+
 @test "list: shows active marker" {
   todo add Buy groceries
   todo add Fix bug
