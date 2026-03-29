@@ -92,6 +92,23 @@ func (m Model) activeDividerIndex() int {
 	return -1 // all items are active
 }
 
+// addIndentMax returns the maximum indent level allowed for a new item
+// in add mode. The new item can be at most one level deeper than the
+// item directly above it in the list.
+func (m Model) addIndentMax() int {
+	if len(m.items) == 0 {
+		return 0
+	}
+	aboveIdx := m.cursor
+	if m.addBefore {
+		aboveIdx = m.cursor - 1
+	}
+	if aboveIdx < 0 || aboveIdx >= len(m.items) {
+		return 0
+	}
+	return min(3, m.items[aboveIdx].IndentLevel+1)
+}
+
 // itemLineCount returns the number of terminal lines an item at index i
 // occupies, including the add-mode input line and active divider if applicable.
 func (m Model) itemLineCount(i int) int {
@@ -294,6 +311,7 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.addIndent = max(m.addIndent, m.items[m.cursor+1].IndentLevel)
 			}
 		}
+		m.addIndent = min(m.addIndent, m.addIndentMax())
 		m.input.Reset()
 		m.input.Placeholder = "New item..."
 		m.input.Width = max(0, m.width-6-m.addIndent*2)
@@ -307,6 +325,7 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if len(m.items) > 0 {
 			m.addIndent = m.items[m.cursor].IndentLevel
 		}
+		m.addIndent = min(m.addIndent, m.addIndentMax())
 		m.input.Reset()
 		m.input.Placeholder = "New item..."
 		m.input.Width = max(0, m.width-6-m.addIndent*2)
@@ -363,8 +382,14 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if len(m.items) > 0 {
 			item := m.items[m.cursor]
 			if !item.IsSection {
-				m.store.Indent(m.directory, item.ID)
-				return m, m.loadItems
+				maxLevel := 0
+				if m.cursor > 0 {
+					maxLevel = m.items[m.cursor-1].IndentLevel + 1
+				}
+				if item.IndentLevel < min(3, maxLevel) {
+					m.store.Indent(m.directory, item.ID)
+					return m, m.loadItems
+				}
 			}
 		}
 
@@ -465,7 +490,7 @@ func (m Model) updateFilter(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch msg.String() {
-	case "enter":
+	case "enter", "esc":
 		text := strings.TrimSpace(m.input.Value())
 		if m.mode == modeEdit {
 			if text != "" && len(m.items) > 0 {
@@ -489,9 +514,23 @@ func (m Model) updateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.Blur()
 		return m, m.loadItems
 
-	case "esc":
+	case "ctrl+c":
 		m.mode = modeNormal
 		m.input.Blur()
+		return m, nil
+
+	case "tab":
+		if m.mode == modeAdd && m.addIndent < m.addIndentMax() {
+			m.addIndent++
+			m.input.Width = max(0, m.width-6-m.addIndent*2)
+		}
+		return m, nil
+
+	case "shift+tab":
+		if m.mode == modeAdd && m.addIndent > 0 {
+			m.addIndent--
+			m.input.Width = max(0, m.width-6-m.addIndent*2)
+		}
 		return m, nil
 	}
 
@@ -689,7 +728,7 @@ func (m Model) View() string {
 	}
 	b.WriteString("\n")
 	if m.mode == modeAdd || m.mode == modeEdit {
-		b.WriteString(helpStyle.Render("  enter: save • esc: cancel"))
+		b.WriteString(helpStyle.Render("  enter/esc: save • ctrl+c: cancel"))
 	} else {
 		b.WriteString(helpStyle.Render("  j/k: move • J/K: reorder • space/enter: toggle • x: active • tab/S-tab: indent • a/o/O: add • s: section • e: edit • d: delete • c: copy • C: clean • /: filter • esc/q: quit"))
 	}

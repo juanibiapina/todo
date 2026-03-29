@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - TUI `O` (Shift) to add a new item before the cursor
 - TUI `o` inherits indent from cursor context (matches children if present); `O` inherits indent from current item
+- TUI `tab`/`shift+tab` in add mode to adjust indent level before saving
+- TUI `esc` in add/edit mode saves (like `enter`); `ctrl+c` cancels
 
 ### Changed
 

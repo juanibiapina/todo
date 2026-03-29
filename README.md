@@ -103,6 +103,9 @@ Keybindings:
 - `a`: add new item (after cursor, no indent)
 - `o`: add new item (after cursor, matches indent level)
 - `O` (Shift): add new item (before cursor, inherits indent)
+- `tab`/`shift+tab` in add/edit mode: adjust indent level
+- `esc` in add/edit mode: save (same as `enter`)
+- `ctrl+c` in add/edit mode: cancel
 - `s`: add section divider (after cursor)
 - `e`: edit selected item
 - `d`: delete selected item
