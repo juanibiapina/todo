@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- TUI `O` (Shift) to add a new item before the cursor
+
+### Changed
+
+- TUI add-item keybinding also available as `o` (Vim-style), `a` still works
+
 ## [3.1.0] - 2026-03-29
 
 ### Added

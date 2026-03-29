@@ -616,6 +616,63 @@ func TestInsertItemAfter(t *testing.T) {
 	}
 }
 
+func TestInsertItemBefore(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	second, _ := s.Add("/d", "Second")
+	s.Add("/d", "Third")
+
+	inserted, err := s.InsertItemBefore("/d", "Between", second.ID)
+	if err != nil {
+		t.Fatalf("InsertItemBefore: %v", err)
+	}
+	if inserted.Text != "Between" {
+		t.Errorf("expected text 'Between', got %q", inserted.Text)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 4 {
+		t.Fatalf("expected 4 items, got %d", len(items))
+	}
+	texts := make([]string, len(items))
+	for i, item := range items {
+		texts[i] = item.Text
+	}
+	expected := []string{"First", "Between", "Second", "Third"}
+	for i, exp := range expected {
+		if texts[i] != exp {
+			t.Errorf("position %d: expected %q, got %q", i, exp, texts[i])
+		}
+	}
+}
+
+func TestInsertItemBeforeFirst(t *testing.T) {
+	s := openTestStore(t)
+
+	s.Add("/d", "First")
+	s.Add("/d", "Second")
+
+	inserted, err := s.InsertItemBefore("/d", "New first", 1)
+	if err != nil {
+		t.Fatalf("InsertItemBefore: %v", err)
+	}
+	if inserted.ID != 1 {
+		t.Errorf("expected ID 1, got %d", inserted.ID)
+	}
+
+	items, _ := s.List("/d")
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	expected := []string{"New first", "First", "Second"}
+	for i, exp := range expected {
+		if items[i].Text != exp {
+			t.Errorf("position %d: expected %q, got %q", i, exp, items[i].Text)
+		}
+	}
+}
+
 func TestInsertSectionAfter(t *testing.T) {
 	s := openTestStore(t)
 
