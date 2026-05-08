@@ -12,9 +12,9 @@ load test_helper
   assert_success
 }
 
-@test "add --section: rejects text arguments" {
-  run todo add --section Work
-  assert_failure
+@test "add --section: accepts a title" {
+  run todo add --section Planning
+  assert_success
 }
 
 @test "add --section: section appears in list as divider" {
@@ -22,6 +22,13 @@ load test_helper
   run todo list
   assert_success
   assert_output --partial "──────────"
+}
+
+@test "add --section: titled section shows the title in list output" {
+  todo add -s Planning
+  run todo list
+  assert_success
+  assert_output --partial "── Planning ─"
 }
 
 @test "list: sections render without checkboxes" {
@@ -88,7 +95,7 @@ load test_helper
   assert_output --partial "is a section"
 }
 
-@test "edit: rejects section" {
+@test "edit: renames a section" {
   todo add -s
 
   local out
@@ -97,9 +104,11 @@ load test_helper
   task_id="$(extract_id "${out}")"
   local section_id=$((task_id - 1))
 
-  run todo edit "${section_id}" "new text"
-  assert_failure
-  assert_output --partial "is a section"
+  run todo edit "${section_id}" "Renamed"
+  assert_success
+
+  run todo list
+  assert_output --partial "── Renamed ─"
 }
 
 @test "clean: does not remove sections" {

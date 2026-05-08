@@ -38,12 +38,17 @@ todo add Fix the login bug
 
 ### Add a section divider
 
-Sections are visual dividers that group items. They can't be checked or cleaned.
+Sections are visual dividers that group items. They can't be checked or
+cleaned. They may optionally have a title, which appears inline with the
+divider.
 
 ```bash
-todo add --section
-todo add -s
+todo add --section            # untitled divider
+todo add -s                   # short flag
+todo add -s Planning          # titled divider
 ```
+
+Use `todo edit <id> <title>` to rename a section.
 
 ### List items
 

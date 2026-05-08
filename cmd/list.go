@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/juanibiapina/todo/internal/config"
+	"github.com/juanibiapina/todo/internal/render"
 	"github.com/juanibiapina/todo/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ var listCmd = &cobra.Command{
 
 		for _, item := range items {
 			if item.IsSection {
-				fmt.Println("──────────")
+				fmt.Println(render.SectionLine(item.Text, 30))
 				continue
 			}
 			check := " "

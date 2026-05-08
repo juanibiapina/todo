@@ -123,14 +123,15 @@ func (s *Store) setIndentLevel(directory string, id int, delta int) error {
 }
 
 // AddSection inserts a new section divider for the given directory.
-func (s *Store) AddSection(directory string) (*Item, error) {
+// The title may be empty.
+func (s *Store) AddSection(directory, title string) (*Item, error) {
 	data, err := s.readFile()
 	if err != nil {
 		return nil, err
 	}
 
 	dir := getOrCreateDirectory(data, directory)
-	dir.items = append(dir.items, &fileItem{isSection: true})
+	dir.items = append(dir.items, &fileItem{isSection: true, text: title})
 
 	if err := s.writeFile(data); err != nil {
 		return nil, err
@@ -140,6 +141,7 @@ func (s *Store) AddSection(directory string) (*Item, error) {
 	return &Item{
 		ID:        id,
 		Directory: directory,
+		Text:      title,
 		IsSection: true,
 	}, nil
 }
@@ -154,9 +156,10 @@ func (s *Store) InsertItemBefore(directory, text string, beforeID int, indentLev
 	return s.insertBefore(directory, text, beforeID, indentLevel)
 }
 
-// InsertSectionAfter inserts a new section divider right after the given position.
-func (s *Store) InsertSectionAfter(directory string, afterID int) (*Item, error) {
-	return s.insertAfter(directory, "", afterID, true, 0)
+// InsertSectionAfter inserts a new section divider right after the given
+// position. The title may be empty.
+func (s *Store) InsertSectionAfter(directory string, afterID int, title string) (*Item, error) {
+	return s.insertAfter(directory, title, afterID, true, 0)
 }
 
 func (s *Store) insertAfter(directory, text string, afterID int, isSection bool, indentLevel int) (*Item, error) {
@@ -375,8 +378,8 @@ func (s *Store) ToggleActive(directory string, id int) (bool, error) {
 	return fi.isActive, nil
 }
 
-// Edit updates the text of an item. Returns an error if the item doesn't exist
-// or is a section.
+// Edit updates the text of an item. For sections this updates the title.
+// Returns an error if the item doesn't exist.
 func (s *Store) Edit(directory string, id int, text string) error {
 	data, err := s.readFile()
 	if err != nil {
@@ -389,10 +392,6 @@ func (s *Store) Edit(directory string, id int, text string) error {
 	}
 
 	fi := dir.items[id-1]
-	if fi.isSection {
-		return fmt.Errorf("item %d is a section", id)
-	}
-
 	fi.text = text
 	return s.writeFile(data)
 }
@@ -589,9 +588,14 @@ func parseMarkdown(content string) *fileData {
 			continue
 		}
 
-		// Section divider
+		// Section divider, optionally with a title.
 		if trimmed == "---" {
 			current.items = append(current.items, &fileItem{isSection: true})
+			continue
+		}
+		if strings.HasPrefix(trimmed, "--- ") {
+			title := strings.TrimSpace(strings.TrimPrefix(trimmed, "--- "))
+			current.items = append(current.items, &fileItem{isSection: true, text: title})
 			continue
 		}
 
@@ -665,7 +669,13 @@ func renderMarkdown(data *fileData) string {
 
 		for _, item := range dir.items {
 			if item.isSection {
-				b.WriteString("---\n")
+				if item.text == "" {
+					b.WriteString("---\n")
+				} else {
+					b.WriteString("--- ")
+					b.WriteString(item.text)
+					b.WriteString("\n")
+				}
 			} else {
 				check := "[ ]"
 				if item.checked {

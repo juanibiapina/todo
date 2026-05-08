@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/juanibiapina/todo/internal/config"
+	"github.com/juanibiapina/todo/internal/render"
 	"github.com/juanibiapina/todo/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -44,6 +45,10 @@ var editCmd = &cobra.Command{
 			return err
 		}
 
+		if item.IsSection {
+			fmt.Printf("%d %s\n", item.ID, render.SectionLine(item.Text, 30))
+			return nil
+		}
 		check := " "
 		if item.Checked {
 			check = "x"

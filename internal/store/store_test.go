@@ -490,7 +490,7 @@ func makeTime(year int, month time.Month, day int) time.Time {
 func TestAddSection(t *testing.T) {
 	s := openTestStore(t)
 
-	item, err := s.AddSection("/d")
+	item, err := s.AddSection("/d", "")
 	if err != nil {
 		t.Fatalf("AddSection: %v", err)
 	}
@@ -505,11 +505,93 @@ func TestAddSection(t *testing.T) {
 	}
 }
 
+func TestAddSectionWithTitle(t *testing.T) {
+	s := openTestStore(t)
+
+	item, err := s.AddSection("/d", "Planning")
+	if err != nil {
+		t.Fatalf("AddSection: %v", err)
+	}
+	if !item.IsSection {
+		t.Error("expected IsSection to be true")
+	}
+	if item.Text != "Planning" {
+		t.Errorf("expected text %q, got %q", "Planning", item.Text)
+	}
+
+	got, _ := s.Get("/d", item.ID)
+	if got.Text != "Planning" {
+		t.Errorf("expected persisted text %q, got %q", "Planning", got.Text)
+	}
+}
+
+func TestSectionTitlePersistsInMarkdown(t *testing.T) {
+	s := openTestStore(t)
+
+	s.AddSection("/d", "Planning")
+
+	content, _ := os.ReadFile(s.filePath)
+	if !strings.Contains(string(content), "--- Planning") {
+		t.Errorf("expected '--- Planning' in markdown, got:\n%s", string(content))
+	}
+}
+
+func TestSectionWithoutTitlePersistsAsBareRule(t *testing.T) {
+	s := openTestStore(t)
+
+	s.AddSection("/d", "")
+
+	content, _ := os.ReadFile(s.filePath)
+	if !strings.Contains(string(content), "\n---\n") {
+		t.Errorf("expected bare '---' line in markdown, got:\n%s", string(content))
+	}
+}
+
+func TestParsesBareSectionAsEmptyTitle(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "test.md")
+	content := "# TODO\n\n## /d\n\n- [ ] Task\n---\n- [ ] Other\n"
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	s, _ := Open(filePath)
+
+	items, _ := s.List("/d")
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	if !items[1].IsSection {
+		t.Error("expected position 1 to be a section")
+	}
+	if items[1].Text != "" {
+		t.Errorf("expected empty title, got %q", items[1].Text)
+	}
+}
+
+func TestParsesTitledSection(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "test.md")
+	content := "# TODO\n\n## /d\n\n- [ ] Task\n--- Planning\n- [ ] Other\n"
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	s, _ := Open(filePath)
+
+	items, _ := s.List("/d")
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	if !items[1].IsSection {
+		t.Error("expected position 1 to be a section")
+	}
+	if items[1].Text != "Planning" {
+		t.Errorf("expected title %q, got %q", "Planning", items[1].Text)
+	}
+}
+
 func TestListReturnsSections(t *testing.T) {
 	s := openTestStore(t)
 
 	s.Add("/d", "Task 1")
-	s.AddSection("/d")
+	s.AddSection("/d", "")
 	s.Add("/d", "Task 2")
 
 	items, err := s.List("/d")
@@ -533,7 +615,7 @@ func TestListReturnsSections(t *testing.T) {
 func TestCheckRejectsSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 	err := s.Check("/d", section.ID)
 	if err == nil {
 		t.Fatal("expected error when checking a section")
@@ -546,7 +628,7 @@ func TestCheckRejectsSection(t *testing.T) {
 func TestUncheckRejectsSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 	err := s.Uncheck("/d", section.ID)
 	if err == nil {
 		t.Fatal("expected error when unchecking a section")
@@ -556,23 +638,42 @@ func TestUncheckRejectsSection(t *testing.T) {
 	}
 }
 
-func TestEditRejectsSection(t *testing.T) {
+func TestEditRenamesSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
-	err := s.Edit("/d", section.ID, "text")
-	if err == nil {
-		t.Fatal("expected error when editing a section")
+	section, _ := s.AddSection("/d", "Old")
+	err := s.Edit("/d", section.ID, "New")
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
 	}
-	if !strings.Contains(err.Error(), "is a section") {
-		t.Errorf("expected 'is a section' error, got: %v", err)
+
+	got, _ := s.Get("/d", section.ID)
+	if got.Text != "New" {
+		t.Errorf("expected title %q, got %q", "New", got.Text)
+	}
+	if !got.IsSection {
+		t.Error("expected item to remain a section after rename")
+	}
+}
+
+func TestEditCanSetSectionTitleFromEmpty(t *testing.T) {
+	s := openTestStore(t)
+
+	section, _ := s.AddSection("/d", "")
+	if err := s.Edit("/d", section.ID, "Now titled"); err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+
+	got, _ := s.Get("/d", section.ID)
+	if got.Text != "Now titled" {
+		t.Errorf("expected title %q, got %q", "Now titled", got.Text)
 	}
 }
 
 func TestToggleRejectsSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 	_, err := s.Toggle("/d", section.ID)
 	if err == nil {
 		t.Fatal("expected error when toggling a section")
@@ -725,7 +826,7 @@ func TestInsertSectionAfter(t *testing.T) {
 	first, _ := s.Add("/d", "First")
 	s.Add("/d", "Second")
 
-	section, err := s.InsertSectionAfter("/d", first.ID)
+	section, err := s.InsertSectionAfter("/d", first.ID, "")
 	if err != nil {
 		t.Fatalf("InsertSectionAfter: %v", err)
 	}
@@ -742,10 +843,30 @@ func TestInsertSectionAfter(t *testing.T) {
 	}
 }
 
+func TestInsertSectionAfterWithTitle(t *testing.T) {
+	s := openTestStore(t)
+
+	first, _ := s.Add("/d", "First")
+	s.Add("/d", "Second")
+
+	section, err := s.InsertSectionAfter("/d", first.ID, "Inserted")
+	if err != nil {
+		t.Fatalf("InsertSectionAfter: %v", err)
+	}
+	if section.Text != "Inserted" {
+		t.Errorf("expected title %q, got %q", "Inserted", section.Text)
+	}
+
+	got, _ := s.Get("/d", section.ID)
+	if got.Text != "Inserted" {
+		t.Errorf("expected persisted title %q, got %q", "Inserted", got.Text)
+	}
+}
+
 func TestCleanPreservesSections(t *testing.T) {
 	s := openTestStore(t)
 
-	s.AddSection("/d")
+	s.AddSection("/d", "")
 	item, _ := s.Add("/d", "Task")
 	s.Check("/d", item.ID)
 
@@ -770,7 +891,7 @@ func TestSwapWithSection(t *testing.T) {
 	s := openTestStore(t)
 
 	item, _ := s.Add("/d", "Task")
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 
 	err := s.Swap("/d", item.ID, section.ID)
 	if err != nil {
@@ -813,7 +934,7 @@ func TestToggleActive(t *testing.T) {
 func TestToggleActiveRejectsSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 	_, err := s.ToggleActive("/d", section.ID)
 	if err == nil {
 		t.Fatal("expected error when toggling active on a section")
@@ -1208,7 +1329,7 @@ func TestIndentMaxLevel(t *testing.T) {
 func TestIndentRejectsSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 	err := s.Indent("/d", section.ID)
 	if err == nil {
 		t.Fatal("expected error when indenting a section")
@@ -1264,7 +1385,7 @@ func TestUnindentAtZero(t *testing.T) {
 func TestUnindentRejectsSection(t *testing.T) {
 	s := openTestStore(t)
 
-	section, _ := s.AddSection("/d")
+	section, _ := s.AddSection("/d", "")
 	err := s.Unindent("/d", section.ID)
 	if err == nil {
 		t.Fatal("expected error when unindenting a section")

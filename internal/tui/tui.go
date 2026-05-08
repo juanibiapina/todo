@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/juanibiapina/todo/internal/render"
 	"github.com/juanibiapina/todo/internal/store"
 	"github.com/sahilm/fuzzy"
 )
@@ -19,7 +20,8 @@ var (
 	cursorStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
 	helpStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	titleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
-	sectionStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
+	sectionStyle      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
+	sectionTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15"))
 )
 
 type mode int
@@ -315,20 +317,27 @@ func (m Model) updateNormal(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case "s":
 		if len(m.items) > 0 {
-			m.store.InsertSectionAfter(m.directory, m.items[m.cursor].ID)
+			m.store.InsertSectionAfter(m.directory, m.items[m.cursor].ID, "")
 			m.cursor++
 		} else {
-			m.store.AddSection(m.directory)
+			m.store.AddSection(m.directory, "")
 		}
 		return m, m.loadItems
 
 	case "e":
-		if len(m.items) > 0 && !m.items[m.cursor].IsSection {
+		if len(m.items) > 0 {
+			item := m.items[m.cursor]
 			m.mode = modeEdit
 			m.input.Reset()
-			m.input.Placeholder = "Edit item..."
-			m.input.Width = max(0, m.width-6-m.items[m.cursor].IndentLevel*2)
-			m.input.SetValue(m.items[m.cursor].Text)
+			if item.IsSection {
+				m.input.Placeholder = "Section title..."
+				// Cursor (2) + "── " (3) = 5 cells before input.
+				m.input.Width = max(0, m.width-5)
+			} else {
+				m.input.Placeholder = "Edit item..."
+				m.input.Width = max(0, m.width-6-item.IndentLevel*2)
+			}
+			m.input.SetValue(item.Text)
 			m.input.CursorEnd()
 			m.input.Focus()
 			return m, m.input.Cursor.BlinkCmd()
@@ -626,13 +635,16 @@ func (m Model) View() string {
 			cursor = cursorStyle.Render("> ")
 		}
 
-		if item.IsSection {
-			rule := "──────────"
+		if item.IsSection && m.mode == modeEdit && i == m.cursor {
+			// Editing a section title: show "> ── <input>".
+			itemLines = append(itemLines, cursorStyle.Render("> ")+sectionStyle.Render("── ")+m.input.View())
+		} else if item.IsSection {
+			ruleWidth := 10
 			if m.width > 0 {
-				ruleWidth := max(0, m.width-lipgloss.Width(cursor))
-				rule = strings.Repeat("─", ruleWidth)
+				ruleWidth = max(0, m.width-lipgloss.Width(cursor))
 			}
-			itemLines = append(itemLines, cursor+sectionStyle.Render(rule))
+			lead, mid, tail := render.SectionParts(item.Text, ruleWidth)
+			itemLines = append(itemLines, cursor+sectionStyle.Render(lead)+sectionTitleStyle.Render(mid)+sectionStyle.Render(tail))
 		} else if m.mode == modeEdit && i == m.cursor {
 			check := "[ ]"
 			if item.Checked {

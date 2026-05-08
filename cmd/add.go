@@ -18,9 +18,6 @@ var addCmd = &cobra.Command{
 	Long:  `Add a new unchecked todo item or section divider with the given text.`,
 	Args: cobra.MatchAll(func(cmd *cobra.Command, args []string) error {
 		if addSection {
-			if len(args) > 0 {
-				return fmt.Errorf("sections don't take text arguments")
-			}
 			return nil
 		}
 		if len(args) < 1 {
@@ -41,7 +38,8 @@ var addCmd = &cobra.Command{
 		defer s.Close()
 
 		if addSection {
-			_, err = s.AddSection(dir)
+			title := strings.TrimSpace(strings.Join(args, " "))
+			_, err = s.AddSection(dir, title)
 			if err != nil {
 				return err
 			}

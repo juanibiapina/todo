@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Section dividers can have an optional title: `todo add -s Planning` creates a titled section
+- `todo edit <id> <title>` renames a section (previously rejected sections)
+- TUI `e` on a section opens an inline prompt to edit its title
+- Titled sections render as `── Title ─────` in both CLI list output and the TUI
+
+### Changed
+
+- Markdown format: section dividers serialize as `--- Title` when titled (bare `---` still used and parsed for untitled sections)
+
 ## [3.2.0] - 2026-03-29
 
 ### Added
