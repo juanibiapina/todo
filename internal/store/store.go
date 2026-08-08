@@ -264,6 +264,39 @@ func (s *Store) List(directory string) ([]*Item, error) {
 	return items, nil
 }
 
+// ListAll returns all items across every directory in the file, preserving
+// per-directory ordering (active first, then by position within each directory).
+func (s *Store) ListAll() ([]*Item, error) {
+	data, err := s.readFile()
+	if err != nil {
+		return nil, err
+	}
+
+	var all []*Item
+	for _, dir := range data.directories {
+		items := make([]*Item, len(dir.items))
+		for i, fi := range dir.items {
+			items[i] = &Item{
+				ID:        i + 1,
+				Directory: dir.path,
+				Text:      fi.text,
+				Checked:   fi.checked,
+				IsSection: fi.isSection,
+				IsActive:  fi.isActive,
+			}
+		}
+		sort.SliceStable(items, func(i, j int) bool {
+			if items[i].IsActive != items[j].IsActive {
+				return items[i].IsActive
+			}
+			return items[i].ID < items[j].ID
+		})
+		all = append(all, items...)
+	}
+
+	return all, nil
+}
+
 // Get returns a single item by position (1-based) within the directory.
 func (s *Store) Get(directory string, id int) (*Item, error) {
 	data, err := s.readFile()
