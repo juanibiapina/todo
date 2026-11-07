@@ -1,67 +1,71 @@
-# VHS tape for generating assets/demo.gif
+# VHS tape for assets/demo.gif and assets/help.png
 #
-# Prerequisites:
-#   brew install vhs
-#   make build
-#
-# Usage:
-#   vhs demo.tape
+# Prerequisites: brew install vhs
+# Usage: make demo
 
 Output assets/demo.gif
 
 Set Shell zsh
-Set FontSize 16
-Set Width 900
+Set FontFamily "SauceCodePro Nerd Font"
+Set FontSize 14
+Set Width 1400
 Set Height 500
-Set Padding 20
-Set Theme "Catppuccin Mocha"
+Set Padding 24
+Set TypingSpeed 60ms
+Set Theme { "name": "TokyoNight Moon", "black": "#1b1d2b", "red": "#ff757f", "green": "#c3e88d", "yellow": "#ffc777", "blue": "#82aaff", "purple": "#c099ff", "cyan": "#86e1fc", "white": "#828bb8", "brightBlack": "#444a73", "brightRed": "#ff757f", "brightGreen": "#c3e88d", "brightYellow": "#ffc777", "brightBlue": "#82aaff", "brightPurple": "#c099ff", "brightCyan": "#86e1fc", "brightWhite": "#c8d3f5", "background": "#222436", "foreground": "#c8d3f5", "selection": "#2d3f76", "cursor": "#c8d3f5" }
 
-# Set up demo environment (hidden from recording)
 Hide
-Type "export TODO_FILE=/tmp/todo-demo.md"
+Type "export PROMPT='$ ' TODO_FILE=/tmp/todo-demo.md"
 Enter
-Sleep 200ms
-Type "cd /tmp/todo-demo"
+Type "rm -rf /tmp/todo-demo && mkdir -p /tmp/todo-demo && cd /tmp/todo-demo"
 Enter
-Sleep 200ms
+Type "printf '## /tmp/todo-demo\n\n- [ ] Ship the Rust rewrite @active\n- [ ] Fix the login bug\n  - [ ] Reproduce locally\n  - [x] Check server logs\n- [ ] Write release notes\n--- Later\n- [ ] Update the homepage\n- [ ] Plan the next sprint\n' > $TODO_FILE"
+Enter
 Type "clear"
 Enter
 Sleep 300ms
 Show
 
-# Launch TUI
 Type "todo tui"
-Sleep 500ms
+Sleep 400ms
 Enter
 Sleep 1.5s
 
-# Navigate down through items
-Type "j"
-Sleep 500ms
-Type "j"
-Sleep 500ms
-Type "j"
-Sleep 500ms
-
-# Navigate back up
-Type "k"
-Sleep 500ms
-Type "k"
-Sleep 500ms
-
-# Check an item with space
+# Move to "Reproduce locally" and mark it done
+Type "jj"
+Sleep 600ms
 Type " "
 Sleep 1s
 
-# Move down and toggle active
-Type "j"
-Sleep 500ms
+# Add an item below "Write release notes"
+Type "jj"
+Sleep 600ms
+Type "o"
+Sleep 400ms
+Type "Draft the announcement"
+Sleep 400ms
+Enter
+Sleep 1s
+
+# Mark it active: it moves to the top
 Type "x"
+Sleep 1.2s
+
+# Filter and jump
+Type "/"
+Sleep 400ms
+Type "login"
+Sleep 1.2s
+Enter
 Sleep 1s
 
-# Pause to show result
+# Show the keymap
+Type "?"
+Sleep 1.5s
+Screenshot assets/help.png
 Sleep 1s
+Type "?"
+Sleep 800ms
 
-# Quit
 Type "q"
 Sleep 500ms

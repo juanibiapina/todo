@@ -20,6 +20,10 @@ build:
 	@mkdir -p dist
 	@cp target/release/todo dist/todo
 
+.PHONY: demo
+demo: build
+	@PATH="$(CURDIR)/dist:$$PATH" vhs demo.tape
+
 .PHONY: install
 install:
 	@cargo install --path .
