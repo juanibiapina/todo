@@ -1,11 +1,14 @@
-VERSION ?= dev
-
 .PHONY: test
-test: unit-test integration-test
+test: lint unit-test integration-test
+
+.PHONY: lint
+lint:
+	@cargo fmt --check
+	@cargo clippy --all-targets --quiet -- -D warnings
 
 .PHONY: unit-test
 unit-test:
-	@go test ./...
+	@cargo test --quiet
 
 .PHONY: integration-test
 integration-test: build
@@ -13,8 +16,10 @@ integration-test: build
 
 .PHONY: build
 build:
-	@go build -ldflags "-X github.com/juanibiapina/todo/internal/version.Version=$(VERSION)" -o dist/todo
+	@cargo build --release --quiet
+	@mkdir -p dist
+	@cp target/release/todo dist/todo
 
 .PHONY: install
 install:
-	@go install -ldflags "-X github.com/juanibiapina/todo/internal/version.Version=$(VERSION)"
+	@cargo install --path .

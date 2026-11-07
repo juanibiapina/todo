@@ -14,17 +14,23 @@ A simple per-directory todo list.
 brew install juanibiapina/taps/todo
 ```
 
-### Go
+### Shell installer
 
 ```bash
-go install github.com/juanibiapina/todo@latest
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/juanibiapina/todo/releases/latest/download/todo-installer.sh | sh
+```
+
+### Cargo
+
+```bash
+cargo install --git https://github.com/juanibiapina/todo
 ```
 
 ### From source
 
 ```bash
 make build    # builds to dist/todo
-make install  # go install
+make install  # cargo install
 ```
 
 ## Usage
@@ -116,7 +122,8 @@ Keybindings:
 - `d`: delete selected item
 - `c`: copy item text to clipboard
 - `C` (Shift): clean (delete all checked items)
-- `/`: filter items (fuzzy search)
+- `/`: filter items (fuzzy search); `↑`/`↓` or `ctrl+n`/`ctrl+p` move through matches
+- `?`: show all keybindings
 - `q`/`esc`: quit
 
 ## Storage
@@ -158,7 +165,8 @@ The value supports environment variable expansion (`$HOME`, `$MY_VAR`) and `~` f
 
 ```bash
 make build           # Build binary to dist/todo
-make test            # Run all tests (unit + integration)
-make unit-test       # Run Go unit tests
+make test            # Run all checks (lint + unit + integration)
+make lint            # Run rustfmt and clippy
+make unit-test       # Run Rust unit tests
 make integration-test # Run bats integration tests
 ```

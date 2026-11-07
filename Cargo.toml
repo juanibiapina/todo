@@ -1,0 +1,37 @@
+[package]
+name = "todo"
+version = "3.3.0"
+edition = "2024"
+description = "A simple per-directory todo list"
+authors = ["Juan Ibiapina <juanibiapina@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/juanibiapina/todo"
+homepage = "https://github.com/juanibiapina/todo"
+
+[dependencies]
+arboard = { version = "3.7.0", default-features = false }
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+clap = { version = "4.6.7", features = ["derive", "wrap_help"] }
+clap_complete = "4.6.11"
+fuzzy-matcher = "0.3.7"
+ratatui = "0.30.2"
+tempfile = "3.27.0"
+textwrap = "0.16.4"
+unicode-width = "0.2.3"
+
+[profile.release]
+strip = true
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[lints.rust]
+warnings = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+too_many_arguments = "deny"
+too_many_lines = "deny"
+excessive_nesting = "deny"
