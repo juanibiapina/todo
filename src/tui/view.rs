@@ -155,31 +155,10 @@ impl App {
         );
     }
 
-    /// The directory on the left and open/done counts on the right.
+    /// The directory, then a blank line.
     fn header(&self) -> Vec<Line<'static>> {
-        let done = self.items.iter().filter(|i| i.checked).count();
-        let open = self
-            .items
-            .iter()
-            .filter(|i| !i.is_section && !i.checked)
-            .count();
-        let counts = format!("{open} open · {done} done");
-
-        let path_room = self.width.saturating_sub(counts.width() + 2);
-        let path = truncate_left(&self.display_dir, path_room);
-        let gap = self
-            .width
-            .saturating_sub(path.width() + counts.width())
-            .max(2);
-
-        vec![
-            Line::from(vec![
-                Span::styled(path, TITLE),
-                Span::raw(" ".repeat(gap)),
-                Span::styled(counts, MUTED),
-            ]),
-            Line::raw(""),
-        ]
+        let path = truncate_left(&self.display_dir, self.width);
+        vec![Line::styled(path, TITLE), Line::raw("")]
     }
 
     /// A blank line and either the status message or the key hints.
