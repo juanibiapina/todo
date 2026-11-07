@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-11-07
+
+### Removed
+
+- TUI header no longer shows open and done counts
+
 ## [4.0.0] - 2026-11-07
 
 ### Changed
