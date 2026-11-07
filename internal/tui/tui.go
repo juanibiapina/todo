@@ -14,14 +14,22 @@ import (
 )
 
 var (
-	checkedStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Strikethrough(true)
-	uncheckedStyle = lipgloss.NewStyle()
-	activeStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
-	cursorStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
-	helpStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	titleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
+	checkedStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Strikethrough(true)
+	uncheckedStyle    = lipgloss.NewStyle()
+	activeStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
+	cursorStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
+	titleStyle        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
+	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	sectionStyle      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
 	sectionTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15"))
+	frameStyle        = lipgloss.NewStyle().Padding(framePaddingY, framePaddingX)
+)
+
+// framePaddingY and framePaddingX are the empty rows and columns kept around
+// the content on each side of the terminal.
+const (
+	framePaddingY = 1
+	framePaddingX = 2
 )
 
 type mode int
@@ -187,8 +195,8 @@ func (m Model) loadItems() tea.Msg {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.width = max(0, msg.Width-2*framePaddingX)
+		m.height = max(0, msg.Height-2*framePaddingY)
 		// 2 for indent prefix, 4 for "[ ] "
 		m.input.Width = max(0, m.width-6)
 		// 2 for "/ " prompt
@@ -589,14 +597,19 @@ func (m Model) viewFilter() string {
 }
 
 func (m Model) View() string {
-	if m.err != nil {
-		return fmt.Sprintf("Error: %v\n", m.err)
+	var body string
+	switch {
+	case m.err != nil:
+		body = fmt.Sprintf("Error: %v", m.err)
+	case m.mode == modeFilter:
+		body = m.viewFilter()
+	default:
+		body = m.viewList()
 	}
+	return frameStyle.Render(strings.TrimSuffix(body, "\n"))
+}
 
-	if m.mode == modeFilter {
-		return m.viewFilter()
-	}
-
+func (m Model) viewList() string {
 	// Render all item lines into a slice.
 	var itemLines []string
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- TUI leaves a margin around its content so it no longer touches the window edges
+
 ## [3.3.0] - 2026-05-08
 
 ### Added
