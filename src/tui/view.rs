@@ -34,7 +34,8 @@ const ADD_HINTS: &[Hint] = &[
 ];
 const EDIT_HINTS: &[Hint] = &[("enter", "save"), ("ctrl+c", "cancel")];
 const FILTER_HINTS: &[Hint] = &[("↑↓", "move"), ("enter", "jump"), ("esc", "cancel")];
-const HELP_HINTS: &[Hint] = &[("j k", "scroll"), ("? esc", "close")];
+const HELP_HINTS: &[Hint] = &[("? esc", "close")];
+const HELP_SCROLL_HINTS: &[Hint] = &[("j k", "scroll"), ("? esc", "close")];
 
 /// Full keymap for the help screen, grouped by purpose.
 const KEYMAP: &[(&str, &[Hint])] = &[
@@ -253,6 +254,7 @@ impl App {
         let hints = match self.mode {
             Mode::Add => ADD_HINTS,
             Mode::Edit => EDIT_HINTS,
+            Mode::Help if self.help_lines().len() > self.help_rows() => HELP_SCROLL_HINTS,
             Mode::Help => HELP_HINTS,
             _ => NORMAL_HINTS,
         };
@@ -466,7 +468,7 @@ fn keymap_lines(groups: &[(&str, &[Hint])]) -> Vec<Line<'static>> {
         if !out.is_empty() {
             out.push(Line::raw(""));
         }
-        out.push(Line::styled(group.to_string(), HEADING));
+        out.push(Line::from(Span::styled(group.to_string(), HEADING)));
         for (key, action) in *keys {
             out.push(Line::from(vec![
                 Span::raw("  "),

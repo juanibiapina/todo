@@ -6,7 +6,8 @@
 
 - `src/main.rs`: clap command definitions and CLI output.
 - `src/store.rs`: Markdown parsing, rendering and all item operations. Items are addressed by 1-based position within a directory.
-- `src/tui/`: the interactive TUI (`mod.rs`) and its single-line text input (`input.rs`).
+- `src/tui/`: the interactive TUI: state and keys (`mod.rs`), rendering (`view.rs`), palette styles (`theme.rs`), and the text input (`input.rs`).
+- `demo.tape`: records `assets/demo.gif` and `assets/help.png` with `make demo` (needs vhs). Re-record after visible TUI changes.
 - `src/render.rs`: section divider formatting shared by the CLI and TUI.
 - `src/config.rs`: resolves the todo file path from `TODO_FILE`.
 - `test/*.bats`: CLI integration tests run against `dist/todo`.
