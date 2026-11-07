@@ -650,10 +650,7 @@ mod tests {
 
         let lines = screen(&mut app, 40, 10);
         assert_eq!(lines[0].trim(), "");
-        assert_eq!(
-            lines[1].trim_end(),
-            "  /tmp/project        21 open · 0 done"
-        );
+        assert_eq!(lines[1].trim_end(), "  /tmp/project");
         assert!(lines[2].trim().is_empty());
         assert!(
             lines[3].starts_with("  › [ ] a long item"),

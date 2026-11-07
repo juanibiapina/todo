@@ -109,7 +109,7 @@ todo clean
 todo tui
 ```
 
-The header shows the directory and how many items are open and done. The footer shows the main keys for the current mode. Press `?` for all keys:
+The header shows the directory. The footer shows the main keys for the current mode. Press `?` for all keys:
 
 ![TUI keybindings](assets/help.png)
 
