@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - TUI leaves a margin around its content so it no longer touches the window edges
+- Rewrite `todo` in Rust with a ratatui TUI; commands, keybindings and the Markdown file format are unchanged
+- Install from source with `cargo install --git https://github.com/juanibiapina/todo` instead of `go install`
+- TUI footer shows the main keys for the current mode and fits narrow terminals
+- TUI colours come from the terminal's 16-colour palette, so it follows your terminal theme (e.g. tokyonight) on light and dark backgrounds
+- TUI separates active items from the rest with a blank line instead of a divider that looked like a section
+- TUI shows errors in the footer instead of replacing the list
+- Rename release archives to the target triple, e.g. `todo-aarch64-apple-darwin.tar.gz`
+
+### Added
+
+- TUI header shows the directory and how many items are open and done
+- TUI `?` shows all keybindings in a popup
+- TUI confirms copy, delete and clean in the footer
+- TUI filter highlights matched characters, shows the match count, and accepts arrow keys
+- Add a shell installer to each release: `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/juanibiapina/todo/releases/latest/download/todo-installer.sh | sh`
 
 ## [3.3.0] - 2026-05-08
 

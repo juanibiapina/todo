@@ -5,11 +5,8 @@ load "${BATS_TEST_DIRNAME}/bats-support/load"
 load "${BATS_TEST_DIRNAME}/bats-assert/load"
 
 setup() {
-  # Build binary into test tmpdir
-  go build -o "${BATS_TEST_TMPDIR}/todo" "${BATS_TEST_DIRNAME}/.."
-
-  # Put our binary first in PATH
-  export PATH="${BATS_TEST_TMPDIR}:${PATH}"
+  # Put the binary built by `make build` first in PATH
+  export PATH="${BATS_TEST_DIRNAME}/../dist:${PATH}"
 
   # Use a per-test file so tests are isolated
   export TODO_FILE="${BATS_TEST_TMPDIR}/todo.md"
