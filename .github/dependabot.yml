@@ -13,6 +13,8 @@ updates:
         dependency-type: development
   - package-ecosystem: github-actions
     directory: /
+    exclude-paths:
+      - .github/workflows/release.yml
     schedule:
       interval: weekly
       time: "03:00"
